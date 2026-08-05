@@ -16,7 +16,7 @@ export default function Home() {
     <>
 
       <h2 className="greeting">
-        Welcome Back 👋
+        Welcome back to Aequitas 👋
       </h2>
 
       <h1 className="username">

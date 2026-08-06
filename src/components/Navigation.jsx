@@ -1,40 +1,43 @@
 import { NavLink } from "react-router-dom";
 
-export default function Navigation() {
-  const linkStyle = ({ isActive }) => ({
-    flex: 1,
-    textAlign: "center",
-    textDecoration: "none",
-    color: isActive ? "#4F8CFF" : "#8B8B95",
-    fontWeight: isActive ? 600 : 500,
-    fontSize: "14px",
-  });
+const items = [
+  {
+    to: "/home",
+    icon: "🏠",
+    label: "Home",
+  },
+  {
+    to: "/portfolio",
+    icon: "📁",
+    label: "Portfolio",
+  },
+  {
+    to: "/add",
+    icon: "➕",
+    label: "Add",
+  },
+  {
+    to: "/settings",
+    icon: "⚙️",
+    label: "Settings",
+  },
+];
 
+export default function Navigation() {
   return (
     <nav className="bottom-nav">
-      <NavLink to="/home" style={linkStyle}>
-        🏠
-        <br />
-        Home
-      </NavLink>
-
-      <NavLink to="/portfolio" style={linkStyle}>
-        📁
-        <br />
-        Portfolio
-      </NavLink>
-
-      <NavLink to="/add" style={linkStyle}>
-        ➕
-        <br />
-        Add
-      </NavLink>
-
-      <NavLink to="/settings" style={linkStyle}>
-        ⚙️
-        <br />
-        Settings
-      </NavLink>
+      {items.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          className={({ isActive }) =>
+            `nav-item ${isActive ? "active" : ""}`
+          }
+        >
+          <span className="nav-icon">{item.icon}</span>
+          <span className="nav-label">{item.label}</span>
+        </NavLink>
+      ))}
     </nav>
   );
 }

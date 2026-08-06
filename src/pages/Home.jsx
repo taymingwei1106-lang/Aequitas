@@ -1,9 +1,17 @@
+import { Link } from "react-router-dom";
+
 import Card from "../components/Card";
 
+import GreetingCard from "../components/cards/GreetingCard";
+import FinancialSummary from "../components/FinancialSummary";
+import PortfolioHealthCard from "../components/PortfolioHealthCard";
+import RecommendationCard from "../components/RecommendationCard";
+import PortfolioSnapshotCard from "../components/cards/PortfolioSnapshotCard";
+import TodaysFocusCard from "../components/cards/Today'sFocusCard";
+
 import { getProperties } from "../services/storage";
-
 import { calculateDashboard } from "../utils/dashboard";
-
+import { generatePortfolioInsights } from "../utils/portfolioInsights";
 import formatCurrency from "../utils/formatCurrency";
 
 export default function Home() {
@@ -12,66 +20,207 @@ export default function Home() {
 
   const dashboard = calculateDashboard(properties);
 
+  const intelligence =
+    generatePortfolioInsights(properties);
+
+  const equity =
+    dashboard.totalValue - dashboard.totalLoan;
+
   return (
-    <>
 
-      <h2 className="greeting">
-        Welcome back to Aequitas 👋
-      </h2>
+    <div className="page-container">
 
-      <h1 className="username">
-        Aequitas
-      </h1>
+      <GreetingCard />
 
-      <Card>
+      <PortfolioHealthCard
 
-        <span className="card-label">
-          Portfolio Value
-        </span>
+        health={intelligence.health}
 
-        <h2 className="portfolio-value">
-          RM {formatCurrency(dashboard.totalValue)}
-        </h2>
+        completeness={intelligence.completeness}
 
-      </Card>
+      />
 
-      <Card>
+      <div style={{ marginTop: 24 }}>
 
-        <span className="card-label">
-          Outstanding Loan
-        </span>
+        <FinancialSummary
 
-        <h2>
-          RM {formatCurrency(dashboard.totalLoan)}
-        </h2>
+          value={`RM ${formatCurrency(dashboard.totalValue)}`}
 
-      </Card>
+          loan={`RM ${formatCurrency(dashboard.totalLoan)}`}
 
-      <Card>
+          rental={`RM ${formatCurrency(dashboard.totalRental)}`}
 
-        <span className="card-label">
-          Monthly Rental
-        </span>
+          equity={`RM ${formatCurrency(equity)}`}
 
-        <h2>
-          RM {formatCurrency(dashboard.totalRental)}
-        </h2>
+        />
 
-      </Card>
+      </div>
 
-      <Card>
+      <div
+        className="portfolio-overview-grid"
+        style={{ marginTop: 24 }}
+      >
 
-        <span className="card-label">
-          Total Properties
-        </span>
+        <Card>
 
-        <h2>
-          {dashboard.totalProperties}
-        </h2>
+          <div className="card-label">
 
-      </Card>
+            Total Properties
 
-    </>
+          </div>
+
+          <h2>
+
+            {dashboard.totalProperties}
+
+          </h2>
+
+        </Card>
+
+        <Card>
+
+          <div className="card-label">
+
+            Average Portfolio Value
+
+          </div>
+
+          <h2>
+
+            RM {
+
+              dashboard.totalProperties > 0
+
+                ? formatCurrency(
+
+                    dashboard.totalValue /
+
+                    dashboard.totalProperties
+
+                  )
+
+                : "0"
+
+            }
+
+          </h2>
+
+        </Card>
+
+      </div>
+
+      <div style={{ marginTop: 28 }}>
+
+        <Card>
+
+          <h3 style={{ marginTop: 0 }}>
+
+            🧠 Portfolio Intelligence
+
+          </h3>
+
+          <div className="insight-list">
+
+{intelligence.insights.map((item,index)=>(
+
+<div
+key={index}
+className="insight-item"
+>
+
+<span>
+
+{item.emoji}
+
+</span>
+
+<div>
+
+<strong>
+
+{item.title}
+
+</strong>
+
+<p>
+
+{item.message}
+
+</p>
+
+</div>
+
+</div>
+
+))}
+          </div>
+
+        </Card>
+
+      </div>
+
+      <RecommendationCard
+
+        title="Recommended Next Step"
+
+        description={
+
+          intelligence.recommendations[0] ||
+
+          "Continue building your portfolio."
+
+        }
+
+        buttonText="Open Portfolio"
+
+        onClick={() =>
+
+          window.location.href = "/portfolio"
+
+        }
+
+      />
+
+      <div style={{ marginTop: 24 }}>
+
+        <Card>
+
+          <h3 style={{ marginTop: 0 }}>
+
+            Quick Actions
+
+          </h3>
+
+          <div className="action-panel">
+
+            <Link to="/add">
+
+              <button className="primary-button">
+
+                + Add Property
+
+              </button>
+
+            </Link>
+
+            <Link to="/portfolio">
+
+              <button className="btn-secondary">
+
+                View Portfolio
+
+              </button>
+
+            </Link>
+
+          </div>
+
+        </Card>
+
+      </div>
+
+    </div>
+
   );
 
 }

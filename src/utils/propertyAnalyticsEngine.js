@@ -1,4 +1,4 @@
-import { calculatePropertyScore } from "./PropertyScoreEngineropertyScoreEngine";
+import { calculatePropertyScore } from "./PropertyScoreEngine";
 import { calculatePropertyStatus } from "./propertyStatusEngine";
 import { calculateHealth } from "./healthEngine";
 import { calculateInvestment } from "./investmentEngine";

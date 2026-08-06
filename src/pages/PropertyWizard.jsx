@@ -94,7 +94,12 @@ setForm({
     }
   }
 
-  const completed = Object.values(form).filter(Boolean).length;
+const completed = Object.values(form).filter(
+  value =>
+    value !== "" &&
+    value !== null &&
+    value !== undefined
+).length;
 const progress =
   (completed / Object.keys(form).length) * 100;
 
@@ -131,6 +136,13 @@ const progress =
             value={form.purchasePrice}
             onChange={handleChange}
           />
+          <input
+  name="marketValue"
+  type="number"
+  placeholder="Current Market Value (RM)"
+  value={form.marketValue}
+  onChange={handleChange}
+/>
 
           <input
             name="outstandingLoan"
@@ -209,15 +221,7 @@ const progress =
 
 <hr />
 
-<h3>Investment Information</h3>
-
-<input
-  name="marketValue"
-  type="number"
-  placeholder="Current Market Value (RM)"
-  value={form.marketValue}
-  onChange={handleChange}
-/>
+<h3>Acquisition Costs</h3>
 
 <input
   name="renovationCost"

@@ -11,24 +11,68 @@ export default function PropertyWizard() {
   const { id } = useParams();
   const editing = Boolean(id);
 
-  const [form, setForm] = useState({
-    projectName: "",
-    purchasePrice: "",
-    outstandingLoan: "",
-    monthlyRental: "",
-  });
+const [form, setForm] = useState({
+  projectName: "",
+  purchasePrice: "",
+  outstandingLoan: "",
+  monthlyRental: "",
+
+  monthlyInstalment: "",
+  maintenanceFee: "",
+  insurance: "",
+  quitRent: "",
+  assessmentTax: "",
+  managementFee: "",
+  otherExpenses: "",
+
+  marketValue: "",
+
+  renovationCost: "",
+  legalFees: "",
+  stampDuty: "",
+  furnishingCost: "",
+});
 
   useEffect(() => {
     if (!editing) return;
     const property = getProperty(id);
     if (!property) return;
 
-    setForm({
-      projectName: property.projectName || "",
-      purchasePrice: property.purchasePrice || "",
-      outstandingLoan: property.outstandingLoan || "",
-      monthlyRental: property.monthlyRental || "",
-    });
+setForm({
+
+  projectName: property.projectName || "",
+
+  purchasePrice: property.purchasePrice || "",
+
+  outstandingLoan: property.outstandingLoan || "",
+
+  monthlyRental: property.monthlyRental || "",
+
+  monthlyInstalment: property.monthlyInstalment || "",
+
+  maintenanceFee: property.maintenanceFee || "",
+
+  insurance: property.insurance || "",
+
+  quitRent: property.quitRent || "",
+
+  assessmentTax: property.assessmentTax || "",
+
+  managementFee: property.managementFee || "",
+
+  otherExpenses: property.otherExpenses || "",
+
+  marketValue: property.marketValue || "",
+
+  renovationCost: property.renovationCost || "",
+
+  legalFees: property.legalFees || "",
+
+  stampDuty: property.stampDuty || "",
+
+  furnishingCost: property.furnishingCost || "",
+
+});
   }, [editing, id]);
 
   function handleChange(e) {
@@ -51,7 +95,8 @@ export default function PropertyWizard() {
   }
 
   const completed = Object.values(form).filter(Boolean).length;
-  const progress = (completed / 4) * 100;
+const progress =
+  (completed / Object.keys(form).length) * 100;
 
   return (
     <div>
@@ -96,12 +141,115 @@ export default function PropertyWizard() {
           />
 
           <input
-            name="monthlyRental"
+            name="monthlyRental" 
             type="number"
             placeholder="Monthly Rental (RM)"
             value={form.monthlyRental}
             onChange={handleChange}
           />
+          <hr />
+
+<h3>Financial Centre</h3>
+
+<input
+  name="monthlyInstalment"
+  type="number"
+  placeholder="Monthly Instalment (RM)"
+  value={form.monthlyInstalment}
+  onChange={handleChange}
+/>
+
+<input
+  name="maintenanceFee"
+  type="number"
+  placeholder="Maintenance Fee (RM)"
+  value={form.maintenanceFee}
+  onChange={handleChange}
+/>
+
+<input
+  name="insurance"
+  type="number"
+  placeholder="Insurance (RM)"
+  value={form.insurance}
+  onChange={handleChange}
+/>
+
+<input
+  name="quitRent"
+  type="number"
+  placeholder="Quit Rent (RM)"
+  value={form.quitRent}
+  onChange={handleChange}
+/>
+
+<input
+  name="assessmentTax"
+  type="number"
+  placeholder="Assessment Tax (RM)"
+  value={form.assessmentTax}
+  onChange={handleChange}
+/>
+
+<input
+  name="managementFee"
+  type="number"
+  placeholder="Management Fee (RM)"
+  value={form.managementFee}
+  onChange={handleChange}
+/>
+
+<input
+  name="otherExpenses"
+  type="number"
+  placeholder="Other Monthly Expenses (RM)"
+  value={form.otherExpenses}
+  onChange={handleChange}
+/>
+
+<hr />
+
+<h3>Investment Information</h3>
+
+<input
+  name="marketValue"
+  type="number"
+  placeholder="Current Market Value (RM)"
+  value={form.marketValue}
+  onChange={handleChange}
+/>
+
+<input
+  name="renovationCost"
+  type="number"
+  placeholder="Renovation Cost (RM)"
+  value={form.renovationCost}
+  onChange={handleChange}
+/>
+
+<input
+  name="legalFees"
+  type="number"
+  placeholder="Legal Fees (RM)"
+  value={form.legalFees}
+  onChange={handleChange}
+/>
+
+<input
+  name="stampDuty"
+  type="number"
+  placeholder="Stamp Duty (RM)"
+  value={form.stampDuty}
+  onChange={handleChange}
+/>
+
+<input
+  name="furnishingCost"
+  type="number"
+  placeholder="Furnishing Cost (RM)"
+  value={form.furnishingCost}
+  onChange={handleChange}
+/>
 
           <div style={{marginTop:12}}>
             <div style={{

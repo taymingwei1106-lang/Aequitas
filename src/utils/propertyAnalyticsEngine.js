@@ -9,6 +9,10 @@ import { calculateEquity } from "./equityEngine";
 import { calculateRentalYield } from "./rentalYieldEngine";
 import { generatePropertyAI } from "./propertyAI";
 import { generateTimeline } from "./propertyTimeline";
+import { calculateRisk } from "./riskEngine";
+import { calculateForecast } from "./forecastEngine";
+import { calculateContribution } from "./contributionEngine";
+import { getProperties } from "../services/storage";
 
 export function calculatePropertyAnalytics(property) {
 
@@ -44,31 +48,68 @@ export function calculatePropertyAnalytics(property) {
 
     const timeline =
         generateTimeline(property);
+        
+        const risk = calculateRisk({
 
-    return {
+  loan: equity.loan,
 
-        score,
+  marketValue: equity.market,
 
-        status,
+  monthlyProfit: profit.monthlyProfit,
 
-        health,
+  rentalYield: rentalYield.grossYield,
 
-        investment,
+  equity: equity.equity,
 
-        commitments,
+});
+const forecast = calculateForecast({
 
-        cashflow,
+  marketValue: equity.market,
 
-        profit,
+  outstandingLoan: equity.loan,
 
-        equity,
+  monthlyRental: cashflow.rental,
 
-        rentalYield,
+  years: 5,
 
-        ai,
+});
 
-        timeline,
+const portfolio = getProperties();
 
-    };
+const contribution =
+  calculateContribution(
+    property,
+    portfolio
+  );
+
+ return {
+
+  score,
+
+  health,
+
+  risk,
+
+  forecast,
+
+  contribution,
+
+  investment,
+
+  commitments,
+
+  cashflow,
+
+  profit,
+
+  equity,
+
+  rentalYield,
+
+  ai,
+
+  timeline,
+
+};
 
 }

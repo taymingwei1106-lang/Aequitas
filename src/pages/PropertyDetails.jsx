@@ -1,10 +1,23 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { getProperty, deleteProperty } from "../services/storage";
+import {
+  getProperty,
+  deleteProperty,
+} from "../services/storage";
 
-import formatCurrency from "../utils/formatCurrency";
+import {
+  calculatePropertyAnalytics,
+} from "../utils/propertyAnalyticsEngine";
 
-import { calculatePropertyAnalytics } from "../utils/propertyAnalyticsEngine";
+import ExecutiveSummary from "../components/ExecutiveSummary";
+import FinancialCentre from "../components/property/FinancialCentre";
+import HealthReport from "../components/property/HealthReport";
+import ExpenseBreakdown from "../components/property/ExpenseBreakdown";
+import InvestmentBreakdown from "../components/property/InvestmentBreakdown";
+import AIAdvisor from "../components/property/AIAdvisor";
+import RiskAssessment from "../components/property/RiskAssessment";
+import ForecastCard from "../components/property/ForecastCard";
+import ContributionCard from "../components/property/ContributionCard";
 
 export default function PropertyDetails() {
 
@@ -18,11 +31,17 @@ export default function PropertyDetails() {
 
     return (
 
-      <div>
+      <div className="page-container">
 
-        <h2>Property not found.</h2>
+        <h2>
 
-        <Link to="/portfolio">
+          Property not found.
+
+        </h2>
+
+        <Link
+          to="/portfolio"
+        >
 
           ← Back to Portfolio
 
@@ -37,42 +56,13 @@ export default function PropertyDetails() {
   const analytics =
     calculatePropertyAnalytics(property);
 
-  const purchase =
-    analytics.investment.purchasePrice;
-
-  const marketValue =
-    analytics.equity.market;
-
-  const loan =
-    analytics.equity.loan;
-
-  const equity =
-    analytics.equity.equity;
-
-  const rental =
-    analytics.cashflow.rental;
-
-  const commitments =
-    analytics.commitments.totalCommitments;
-
-  const cashflow =
-    analytics.profit.monthlyProfit;
-
-  const score =
-    analytics.score.score;
-
-  const grade =
-    analytics.score.grade;
-
-  const status =
-    analytics.status.status;
-
-  const health =
-    analytics.health.score;
-
   function handleDelete() {
 
-    if (!window.confirm("Delete this property?"))
+    if (
+      !window.confirm(
+        "Delete this property?"
+      )
+    )
       return;
 
     deleteProperty(id);
@@ -94,265 +84,95 @@ export default function PropertyDetails() {
 
       </Link>
 
-      <section
+      <ExecutiveSummary
+
+        property={property}
+
+        analytics={analytics}
+
+      />
+            <section
         className="page-header"
-        style={{ marginTop: 20 }}
+        style={{
+          marginTop: 24,
+        }}
       >
 
         <p className="page-subtitle">
 
-          Property Overview
+          Property Command Centre
 
         </p>
 
-        <h1 className="page-title">
+        <h2>
 
-          🏢 {property.projectName}
+          Financial Overview
 
-        </h1>
-
-        <p className="page-subtitle">
-
-          Your investment dashboard.
-
-        </p>
+        </h2>
 
       </section>
 
-      <div
-        className="card"
-        style={{ marginBottom: 24 }}
-      >
+      <FinancialCentre
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 20,
-          }}
-        >
+        analytics={analytics}
 
-          <div>
-
-            <h2
-              style={{
-                margin: 0,
-              }}
-            >
-
-              Investment Health
-
-            </h2>
-
-            <p className="page-subtitle">
-
-              Score {score} • Grade {grade} • {status}
-
-            </p>
-
-          </div>
-
-          <div
-            style={{
-              textAlign: "right",
-            }}
-          >
-
-            <h1
-              style={{
-                margin: 0,
-                color: "var(--color-primary)",
-              }}
-            >
-
-              {health}%
-
-            </h1>
-
-            <small>
-
-              Profile Completeness
-
-            </small>
-
-          </div>
-
-        </div>
-
-        <div
-          style={{
-            height: 10,
-            marginTop: 18,
-            background: "#23232d",
-            borderRadius: 999,
-            overflow: "hidden",
-          }}
-        >
-
-          <div
-            style={{
-              width: `${health}%`,
-              height: "100%",
-              background:
-                "linear-gradient(90deg,#4f8cff,#6db8ff)",
-            }}
-          />
-
-        </div>
-
-      </div>
+      />
 
       <div
         style={{
           display: "grid",
           gridTemplateColumns:
-            "repeat(auto-fit,minmax(220px,1fr))",
-          gap: 20,
+            "repeat(auto-fit,minmax(340px,1fr))",
+          gap: 24,
+          marginTop: 24,
         }}
       >
 
-        <div className="card">
+<HealthReport
+  analytics={analytics}
+/>
 
-          <div className="card-label">
+<RiskAssessment
+  analytics={analytics}
+/>
 
-            Purchase Price
+<ForecastCard
+  analytics={analytics}
+/>
 
-          </div>
+<ContributionCard
+  analytics={analytics}
+/>
 
-          <h2>
+<ExpenseBreakdown
+  property={property}
+/>
 
-            RM {formatCurrency(purchase)}
+<InvestmentBreakdown
+  property={property}
+/>
 
-          </h2>
+      </div>
 
-        </div>
+      <div
+        style={{
+          marginTop: 24,
+        }}
+      >
 
-        <div className="card">
+        <AIAdvisor
 
-          <div className="card-label">
+          analytics={analytics}
 
-            Market Value
-
-          </div>
-
-          <h2>
-
-            RM {formatCurrency(marketValue)}
-
-          </h2>
-
-        </div>
-
-        <div className="card">
-
-          <div className="card-label">
-
-            Outstanding Loan
-
-          </div>
-
-          <h2>
-
-            RM {formatCurrency(loan)}
-
-          </h2>
-
-        </div>
-
-        <div className="card">
-
-          <div className="card-label">
-
-            Net Equity
-
-          </div>
-
-          <h2>
-
-            RM {formatCurrency(equity)}
-
-          </h2>
-
-        </div>
-
-        <div className="card">
-
-          <div className="card-label">
-
-            Monthly Rental
-
-          </div>
-
-          <h2>
-
-            RM {formatCurrency(rental)}
-
-          </h2>
-
-        </div>
-
-        <div className="card">
-
-          <div className="card-label">
-
-            Monthly Commitments
-
-          </div>
-
-          <h2>
-
-            RM {formatCurrency(commitments)}
-
-          </h2>
-
-        </div>
-
-        <div className="card">
-
-          <div className="card-label">
-
-            Net Cashflow
-
-          </div>
-
-          <h2
-            style={{
-              color:
-                cashflow >= 0
-                  ? "#22C55E"
-                  : "#EF4444",
-            }}
-          >
-
-            RM {formatCurrency(cashflow)}
-
-          </h2>
-
-        </div>
-
-        <div className="card">
-
-          <div className="card-label">
-
-            Rental Yield
-
-          </div>
-
-          <h2>
-
-            {analytics.rentalYield.grossYield.toFixed(2)}%
-
-          </h2>
-
-        </div>
+        />
 
       </div>
 
       <div
         className="card"
-        style={{ marginTop: 24 }}
+        style={{
+          marginTop: 24,
+        }}
       >
 
         <h3
@@ -361,122 +181,50 @@ export default function PropertyDetails() {
           }}
         >
 
-          AI Property Insights
+          📅 Timeline
 
         </h3>
 
         {
+          analytics.timeline.length === 0 ? (
 
-          analytics.ai.length === 0
+            <p>
 
-          ?
+              No timeline events recorded.
 
-          <p>
+            </p>
 
-            No recommendations yet.
+          ) : (
 
-          </p>
+            <ul>
 
-          :
+              {
+                analytics.timeline.map(
+                  (event, index) => (
+                    <li key={index}>
 
-          <ul>
+                      <strong>
 
-            {
+                        {event.title}
 
-              analytics.ai.map(
+                      </strong>
 
-                (item,index)=>(
+                      {" • "}
 
-                  <li key={index}>
+                      {event.date}
 
-                    <strong>
-
-                      {item.title}
-
-                    </strong>
-
-                    {" — "}
-
-                    {item.message}
-
-                  </li>
-
+                    </li>
+                  )
                 )
+              }
 
-              )
+            </ul>
 
-            }
-
-          </ul>
-
+          )
         }
 
       </div>
-
-      <div
-        className="card"
-        style={{ marginTop: 24 }}
-      >
-
-        <h3
-          style={{
-            marginTop: 0,
-          }}
-        >
-
-          Timeline
-
-        </h3>
-
-        {
-
-          analytics.timeline.length === 0
-
-          ?
-
-          <p>
-
-            No timeline events recorded.
-
-          </p>
-
-          :
-
-          <ul>
-
-            {
-
-              analytics.timeline.map(
-
-                (event,index)=>(
-
-                  <li key={index}>
-
-                    <strong>
-
-                      {event.title}
-
-                    </strong>
-
-                    {" • "}
-
-                    {event.date}
-
-                  </li>
-
-                )
-
-              )
-
-            }
-
-          </ul>
-
-        }
-
-      </div>
-
-      <div
+            <div
         style={{
           display: "flex",
           gap: 16,
@@ -510,8 +258,50 @@ export default function PropertyDetails() {
 
       </div>
 
-    </div>
+      <div
+        style={{
+          height: 32,
+        }}
+      />
+      <hr
+        style={{
+          marginTop: 32,
+          marginBottom: 24,
+          border: "none",
+          borderTop: "1px solid #303544",
+        }}
+      />
 
-  );
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 16,
+        }}
+      >
+
+        <small
+          className="page-subtitle"
+        >
+
+          Last updated from your saved investment data.
+
+        </small>
+
+        <Link
+          to="/portfolio"
+          className="page-subtitle"
+        >
+
+          ← Return to Portfolio
+
+        </Link>
+
+      </div>
+
+    </div>
+      );
 
 }

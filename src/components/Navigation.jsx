@@ -16,11 +16,17 @@ const items = [
     icon: "➕",
     label: "Add",
   },
+    {
+  to: "/calculator",
+  icon: "🧮",
+  label: "Calculator",
+},
   {
     to: "/settings",
     icon: "⚙️",
     label: "Settings",
   },
+
 ];
 
 export default function Navigation() {

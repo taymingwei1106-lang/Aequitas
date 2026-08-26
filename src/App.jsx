@@ -6,6 +6,8 @@ import Home from "./pages/Home";
 import Portfolio from "./pages/Portfolio";
 import PropertyWizard from "./pages/PropertyWizard";
 import PropertyDetails from "./pages/PropertyDetails";
+import PropertyCalculator from "./pages/PropertyCalculator";
+import OpportunityFinder from "./pages/OpportunityFinder";
 
 function Settings() {
     return <h1>Settings</h1>;
@@ -66,7 +68,14 @@ export default function App() {
                     </MainLayout>
                 }
             />
-
+<Route
+    path="/opportunities"
+    element={
+        <MainLayout>
+            <OpportunityFinder />
+        </MainLayout>
+    }
+/>
             <Route
                 path="/settings"
                 element={
@@ -75,6 +84,11 @@ export default function App() {
                     </MainLayout>
                 }
             />
+            
+            <Route
+  path="/calculator"
+  element={<PropertyCalculator />}
+/>
 
         </Routes>
 

@@ -1,216 +1,119 @@
 import { Link } from "react-router-dom";
 
 import Card from "../components/Card";
+import ExecutiveBriefCard from "../components/cards/ExecutiveBriefCard";
 
-import GreetingCard from "../components/cards/GreetingCard";
-import FinancialSummary from "../components/FinancialSummary";
-import PortfolioHealthCard from "../components/PortfolioHealthCard";
-import RecommendationCard from "../components/RecommendationCard";
-import PortfolioSnapshotCard from "../components/cards/PortfolioSnapshotCard";
-import TodaysFocusCard from "../components/cards/Today'sFocusCard";
-
-import { getProperties } from "../services/storage";
-import { calculateDashboard } from "../utils/dashboard";
-import { generatePortfolioInsights } from "../utils/portfolioInsights";
+import useIntelligence from "../hooks/useIntelligence";
 import formatCurrency from "../utils/formatCurrency";
 
 export default function Home() {
+  const { portfolio, executive } = useIntelligence();
 
-  const properties = getProperties();
+  const totalProperties =
+    portfolio?.properties?.length ?? 0;
 
-  const dashboard = calculateDashboard(properties);
+  const totalValue =
+    executive?.portfolioValue ?? 0;
 
-  const intelligence =
-    generatePortfolioInsights(properties);
+  const totalEquity =
+    executive?.totalEquity ?? 0;
 
-  const equity =
-    dashboard.totalValue - dashboard.totalLoan;
+  const monthlyRental =
+    portfolio?.totalRental ?? 0;
 
   return (
-
     <div className="page-container">
 
-      <GreetingCard />
+      {/* Executive Brief */}
 
-      <PortfolioHealthCard
+      <ExecutiveBriefCard />
 
-        health={intelligence.health}
-
-        completeness={intelligence.completeness}
-
-      />
-
-      <div style={{ marginTop: 24 }}>
-
-        <FinancialSummary
-
-          value={`RM ${formatCurrency(dashboard.totalValue)}`}
-
-          loan={`RM ${formatCurrency(dashboard.totalLoan)}`}
-
-          rental={`RM ${formatCurrency(dashboard.totalRental)}`}
-
-          equity={`RM ${formatCurrency(equity)}`}
-
-        />
-
-      </div>
+      {/* Portfolio Snapshot */}
 
       <div
         className="portfolio-overview-grid"
-        style={{ marginTop: 24 }}
+        style={{
+          marginTop: 24,
+          marginBottom: 28,
+        }}
       >
 
         <Card>
-
           <div className="card-label">
-
-            Total Properties
-
+            Portfolio Value
           </div>
 
           <h2>
-
-            {dashboard.totalProperties}
-
+            RM {formatCurrency(totalValue)}
           </h2>
-
         </Card>
 
         <Card>
-
           <div className="card-label">
-
-            Average Portfolio Value
-
+            Net Equity
           </div>
 
           <h2>
-
-            RM {
-
-              dashboard.totalProperties > 0
-
-                ? formatCurrency(
-
-                    dashboard.totalValue /
-
-                    dashboard.totalProperties
-
-                  )
-
-                : "0"
-
-            }
-
+            RM {formatCurrency(totalEquity)}
           </h2>
+        </Card>
 
+        <Card>
+          <div className="card-label">
+            Monthly Rental
+          </div>
+
+          <h2>
+            RM {formatCurrency(monthlyRental)}
+          </h2>
+        </Card>
+
+        <Card>
+          <div className="card-label">
+            Properties
+          </div>
+
+          <h2>
+            {totalProperties}
+          </h2>
         </Card>
 
       </div>
 
-      <div style={{ marginTop: 28 }}>
+      {/* Quick Actions */}
+
+      <div style={{ marginTop: 12 }}>
 
         <Card>
 
           <h3 style={{ marginTop: 0 }}>
-
-            🧠 Portfolio Intelligence
-
-          </h3>
-
-          <div className="insight-list">
-
-{intelligence.insights.map((item,index)=>(
-
-<div
-key={index}
-className="insight-item"
->
-
-<span>
-
-{item.emoji}
-
-</span>
-
-<div>
-
-<strong>
-
-{item.title}
-
-</strong>
-
-<p>
-
-{item.message}
-
-</p>
-
-</div>
-
-</div>
-
-))}
-          </div>
-
-        </Card>
-
-      </div>
-
-      <RecommendationCard
-
-        title="Recommended Next Step"
-
-        description={
-
-          intelligence.recommendations[0] ||
-
-          "Continue building your portfolio."
-
-        }
-
-        buttonText="Open Portfolio"
-
-        onClick={() =>
-
-          window.location.href = "/portfolio"
-
-        }
-
-      />
-
-      <div style={{ marginTop: 24 }}>
-
-        <Card>
-
-          <h3 style={{ marginTop: 0 }}>
-
             Quick Actions
-
           </h3>
 
           <div className="action-panel">
 
             <Link to="/add">
-
               <button className="primary-button">
-
                 + Add Property
-
               </button>
-
             </Link>
 
             <Link to="/portfolio">
-
               <button className="btn-secondary">
-
-                View Portfolio
-
+                Portfolio
               </button>
+            </Link>
 
+            <Link to="/opportunities">
+              <button className="btn-secondary">
+                Opportunities
+              </button>
+            </Link>
+
+            <Link to="/financial-toolkit">
+              <button className="btn-secondary">
+                Financial Toolkit
+              </button>
             </Link>
 
           </div>
@@ -220,7 +123,5 @@ className="insight-item"
       </div>
 
     </div>
-
   );
-
 }

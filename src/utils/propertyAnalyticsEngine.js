@@ -1,115 +1,244 @@
-import { calculatePropertyScore } from "./PropertyScoreEngine";
-import { calculatePropertyStatus } from "./propertyStatusEngine";
-import { calculateHealth } from "./healthEngine";
-import { calculateInvestment } from "./investmentEngine";
-import { calculateMonthlyCommitments } from "./monthlyCommitmentEngine";
-import { calculateCashflow } from "./cashflowEngine";
-import { calculateProfit } from "./profitEngine";
-import { calculateEquity } from "./equityEngine";
-import { calculateRentalYield } from "./rentalYieldEngine";
-import { generatePropertyAI } from "./propertyAI";
-import { generateTimeline } from "./propertyTimeline";
-import { calculateRisk } from "./riskEngine";
-import { calculateForecast } from "./forecastEngine";
-import { calculateContribution } from "./contributionEngine";
-import { getProperties } from "../services/storage";
+import {
+  calculatePropertyScore,
+} from "./PropertyScoreEngine";
 
-export function calculatePropertyAnalytics(property) {
+import {
+  calculatePropertyStatus,
+} from "./propertyStatusEngine";
 
-    const score =
-        calculatePropertyScore(property);
+import {
+  calculateHealth,
+} from "./healthEngine";
 
-    const status =
-        calculatePropertyStatus(property);
+import {
+  calculateInvestmentHealth,
+} from "./InvestmentHealthEngine";
 
-    const health =
-        calculateHealth(property);
+import {
+  calculateInvestment,
+} from "./investmentEngine";
 
-    const investment =
-        calculateInvestment(property);
+import {
+  calculateMonthlyCommitments,
+} from "./monthlyCommitmentEngine";
 
-    const commitments =
-        calculateMonthlyCommitments(property);
+import {
+  calculateCashflow,
+} from "./cashflowEngine";
 
-    const cashflow =
-        calculateCashflow(property);
+import {
+  calculateProfit,
+} from "./profitEngine";
 
-    const profit =
-        calculateProfit(property);
+import {
+  calculateEquity,
+} from "./equityEngine";
 
-    const equity =
-        calculateEquity(property);
+import {
+  calculateRentalYield,
+} from "./rentalYieldEngine";
 
-    const rentalYield =
-        calculateRentalYield(property);
+import {
+  generatePropertyAI,
+} from "./propertyAI";
 
-    const ai =
-        generatePropertyAI(property);
+import {
+  generateTimeline,
+} from "./propertyTimeline";
 
-    const timeline =
-        generateTimeline(property);
-        
-        const risk = calculateRisk({
+import {
+  calculateRisk,
+} from "./riskEngine";
 
-  loan: equity.loan,
+import {
+  calculateForecast,
+} from "./forecastEngine";
 
-  marketValue: equity.market,
+import {
+  calculateContribution,
+} from "./contributionEngine";
 
-  monthlyProfit: profit.monthlyProfit,
+import {
+  getProperties,
+} from "../services/storage";
 
-  rentalYield: rentalYield.grossYield,
 
-  equity: equity.equity,
+export function calculatePropertyAnalytics(
+  property
+) {
 
-});
-const forecast = calculateForecast({
+  const score =
+    calculatePropertyScore(
+      property
+    );
 
-  marketValue: equity.market,
+  const status =
+    calculatePropertyStatus(
+      property
+    );
 
-  outstandingLoan: equity.loan,
+  /*
+   * This is now DATA COMPLETENESS.
+   *
+   * The existing healthEngine checks how many
+   * important property fields have been filled.
+   */
+  const dataCompleteness =
+    calculateHealth(
+      property
+    );
 
-  monthlyRental: cashflow.rental,
+  const investment =
+    calculateInvestment(
+      property
+    );
 
-  years: 5,
+  const commitments =
+    calculateMonthlyCommitments(
+      property
+    );
 
-});
+  const cashflow =
+    calculateCashflow(
+      property
+    );
 
-const portfolio = getProperties();
+  const profit =
+    calculateProfit(
+      property
+    );
 
-const contribution =
-  calculateContribution(
-    property,
-    portfolio
-  );
+  const equity =
+    calculateEquity(
+      property
+    );
 
- return {
+  const rentalYield =
+    calculateRentalYield(
+      property
+    );
 
-  score,
+  /*
+   * REAL INVESTMENT HEALTH
+   *
+   * This measures the financial condition
+   * of the investment rather than how complete
+   * the data is.
+   */
+  const investmentHealth =
+    calculateInvestmentHealth({
+      cashflow:
+        profit.monthlyProfit,
 
-  health,
+      loan:
+        equity.loan,
 
-  risk,
+      marketValue:
+        equity.market,
 
-  forecast,
+      rentalYield:
+        rentalYield.grossYield,
 
-  contribution,
+      equity:
+        equity.equity,
 
-  investment,
+      purchasePrice:
+        investment.purchasePrice,
+    });
 
-  commitments,
+  const ai =
+    generatePropertyAI(
+      property
+    );
 
-  cashflow,
+  const timeline =
+    generateTimeline(
+      property
+    );
 
-  profit,
+  const risk =
+    calculateRisk({
+      loan:
+        equity.loan,
 
-  equity,
+      marketValue:
+        equity.market,
 
-  rentalYield,
+      monthlyProfit:
+        profit.monthlyProfit,
 
-  ai,
+      rentalYield:
+        rentalYield.grossYield,
 
-  timeline,
+      equity:
+        equity.equity,
+    });
 
-};
+  const forecast =
+    calculateForecast({
+      marketValue:
+        equity.market,
 
+      outstandingLoan:
+        equity.loan,
+
+      monthlyRental:
+        cashflow.rental,
+
+      years: 5,
+    });
+
+  const portfolio =
+    getProperties();
+
+  const contribution =
+    calculateContribution(
+      property,
+      portfolio
+    );
+
+  return {
+
+    score,
+
+    status,
+
+    /*
+     * New names
+     */
+    dataCompleteness,
+
+    investmentHealth,
+
+    /*
+     * Temporary compatibility alias.
+     *
+     * Existing components can continue reading
+     * analytics.health until we update them.
+     */
+    health:
+      investmentHealth,
+
+    risk,
+
+    forecast,
+
+    contribution,
+
+    investment,
+
+    commitments,
+
+    cashflow,
+
+    profit,
+
+    equity,
+
+    rentalYield,
+
+    ai,
+
+    timeline,
+  };
 }

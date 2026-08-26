@@ -1,32 +1,149 @@
 import formatCurrency from "../utils/formatCurrency";
+import { generateOpportunities } from "../services/opportunityEngine";
+
 export default function ExecutiveSummary({
   property,
   analytics,
 }) {
-  const cashflow = analytics.profit.monthlyProfit;
+  const cashflow =
+    Number(
+      analytics?.profit?.monthlyProfit ?? 0
+    );
 
-  const purchase = analytics.investment.purchasePrice;
+  const purchase =
+    Number(
+      analytics?.investment?.purchasePrice ??
+      property?.purchasePrice ??
+      0
+    );
 
-  const market = analytics.equity.market;
+  const market =
+    Number(
+      analytics?.equity?.market ??
+      property?.marketValue ??
+      purchase
+    );
 
-  const capitalGrowth = market - purchase;
+  const capitalGrowth =
+    market - purchase;
 
-  const roi = analytics.investment.roi || 0;
+  const roi =
+    Number(
+      analytics?.investment?.roi ?? 0
+    );
 
   const yieldValue =
-    analytics.rentalYield.grossYield || 0;
+    Number(
+      analytics?.rentalYield?.grossYield ?? 0
+    );
 
-  const health = analytics.health.score;
+  const health =
+    Number(
+      analytics?.health?.score ?? 0
+    );
 
-  function recommendation() {
-    if (cashflow > 0 && health >= 80)
-      return "Continue holding.";
+  /*
+   * Use the same Opportunity Engine as the
+   * Opportunity Finder.
+   *
+   * This prevents the Executive Summary from
+   * creating its own conflicting recommendation.
+   */
+  const opportunityResult =
+    generateOpportunities({
+      properties: [property],
+    });
 
-    if (cashflow < 0)
-      return "Review monthly expenses.";
+  const hasRentalOpportunity =
+    opportunityResult.rental.length > 0;
 
-    return "Monitor investment performance.";
+  const hasRefinanceOpportunity =
+    opportunityResult.refinance.length > 0;
+
+  const hasEquityOpportunity =
+    opportunityResult.equity.length > 0;
+
+  const hasSellOpportunity =
+    opportunityResult.sell.length > 0;
+
+  function getRecommendation() {
+    if (hasRentalOpportunity) {
+      return {
+        icon: "🏠",
+        label: "Rental Performance Review",
+        message:
+          "This property is showing negative monthly cashflow. Reviewing rental income and recurring expenses may improve its contribution to the portfolio.",
+      };
+    }
+
+    if (hasRefinanceOpportunity) {
+      return {
+        icon: "💰",
+        label: "Financing Review",
+        message:
+          "Current financing conditions may be worth reviewing. Aequitas recommends comparing the available options before taking action.",
+      };
+    }
+
+    if (hasEquityOpportunity) {
+      return {
+        icon: "📈",
+        label: "Equity Opportunity",
+        message:
+          "This property has meaningful equity that may create future investment flexibility.",
+      };
+    }
+
+    if (hasSellOpportunity) {
+      return {
+        icon: "🎯",
+        label: "Exit Review",
+        message:
+          "The property is showing a significant appreciation signal that may justify reviewing your longer-term exit strategy.",
+      };
+    }
+
+    return {
+      icon: "🟡",
+      label: "Monitor Investment",
+      message:
+        "No immediate action is recommended. Continue monitoring cashflow, financing and property value as the investment develops.",
+    };
   }
+
+  function getHealthLabel() {
+    if (health >= 80) {
+      return {
+        text: "Strong Position",
+        icon: "🟢",
+      };
+    }
+
+    if (health >= 60) {
+      return {
+        text: "Stable Position",
+        icon: "🟡",
+      };
+    }
+
+    if (health >= 40) {
+      return {
+        text: "Needs Attention",
+        icon: "🟠",
+      };
+    }
+
+    return {
+      text: "Higher Risk Position",
+      icon: "🔴",
+    };
+  }
+
+  const recommendation =
+    getRecommendation();
+
+  const healthStatus =
+    getHealthLabel();
 
   return (
     <div className="card">
@@ -40,6 +157,7 @@ export default function ExecutiveSummary({
           gap: 24,
         }}
       >
+
         <div>
 
           <p className="page-subtitle">
@@ -56,11 +174,11 @@ export default function ExecutiveSummary({
 
           <h3
             style={{
-              color: "#22C55E",
               marginTop: 4,
             }}
           >
-            ★★★★★ Healthy Investment
+            {healthStatus.icon}{" "}
+            {healthStatus.text}
           </h3>
 
         </div>
@@ -70,6 +188,7 @@ export default function ExecutiveSummary({
             textAlign: "right",
           }}
         >
+
           <div className="card-label">
             Investment Health
           </div>
@@ -77,7 +196,14 @@ export default function ExecutiveSummary({
           <h1
             style={{
               margin: 0,
-              color: "var(--color-primary)",
+              color:
+                health >= 80
+                  ? "#22C55E"
+                  : health >= 60
+                  ? "#FACC15"
+                  : health >= 40
+                  ? "#F97316"
+                  : "#EF4444",
             }}
           >
             {health}/100
@@ -163,17 +289,29 @@ export default function ExecutiveSummary({
         }}
       >
 
-        <strong>
-          🧠 Recommendation
-        </strong>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+
+          <strong>
+            {recommendation.icon}{" "}
+            {recommendation.label}
+          </strong>
+
+        </div>
 
         <p
           style={{
             marginTop: 10,
             marginBottom: 0,
+            lineHeight: 1.6,
           }}
         >
-          {recommendation()}
+          {recommendation.message}
         </p>
 
       </div>

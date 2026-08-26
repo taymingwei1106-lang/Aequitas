@@ -1,4 +1,10 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+
+import {
+  Link,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
 import {
   getProperty,
@@ -17,105 +23,80 @@ import InvestmentBreakdown from "../components/property/InvestmentBreakdown";
 import AIAdvisor from "../components/property/AIAdvisor";
 import RiskAssessment from "../components/property/RiskAssessment";
 import ForecastCard from "../components/property/ForecastCard";
-import ContributionCard from "../components/property/ContributionCard";
+import MonthlyCheckinCard from "../components/property/MonthlyCheckinCard";
 
 export default function PropertyDetails() {
-
   const { id } = useParams();
-
   const navigate = useNavigate();
 
-  const property = getProperty(id);
+  const [property, setProperty] =
+    useState(() => getProperty(id));
+
+  useEffect(() => {
+    setProperty(getProperty(id));
+  }, [id]);
 
   if (!property) {
-
     return (
-
       <div className="page-container">
+        <h2>Property not found.</h2>
 
-        <h2>
-
-          Property not found.
-
-        </h2>
-
-        <Link
-          to="/portfolio"
-        >
-
+        <Link to="/portfolio">
           ← Back to Portfolio
-
         </Link>
-
       </div>
-
     );
-
   }
 
   const analytics =
     calculatePropertyAnalytics(property);
 
   function handleDelete() {
-
     if (
       !window.confirm(
         "Delete this property?"
       )
-    )
+    ) {
       return;
+    }
 
     deleteProperty(id);
-
     navigate("/portfolio");
+  }
 
+  function refreshProperty() {
+    setProperty(getProperty(id));
   }
 
   return (
-
     <div className="page-container">
-
       <Link
         to="/portfolio"
         className="page-subtitle"
       >
-
         ← Back to Portfolio
-
       </Link>
 
       <ExecutiveSummary
-
         property={property}
-
         analytics={analytics}
-
       />
-            <section
+
+      <section
         className="page-header"
         style={{
           marginTop: 24,
         }}
       >
-
         <p className="page-subtitle">
-
           Property Command Centre
-
         </p>
 
-        <h2>
-
-          Financial Overview
-
-        </h2>
-
+        <h2>Financial Overview</h2>
       </section>
 
       <FinancialCentre
-
         analytics={analytics}
-
       />
 
       <div
@@ -127,45 +108,40 @@ export default function PropertyDetails() {
           marginTop: 24,
         }}
       >
+        <HealthReport
+          analytics={analytics}
+        />
 
-<HealthReport
-  analytics={analytics}
-/>
+        <RiskAssessment
+          analytics={analytics}
+        />
 
-<RiskAssessment
-  analytics={analytics}
-/>
+        <ForecastCard
+          analytics={analytics}
+        />
 
-<ForecastCard
-  analytics={analytics}
-/>
+        <ExpenseBreakdown
+          property={property}
+        />
 
-<ContributionCard
-  analytics={analytics}
-/>
-
-<ExpenseBreakdown
-  property={property}
-/>
-
-<InvestmentBreakdown
-  property={property}
-/>
-
+        <InvestmentBreakdown
+          property={property}
+        />
       </div>
+
+      <MonthlyCheckinCard
+        property={property}
+        onSaved={refreshProperty}
+      />
 
       <div
         style={{
           marginTop: 24,
         }}
       >
-
         <AIAdvisor
-
           analytics={analytics}
-
         />
-
       </div>
 
       <div
@@ -174,57 +150,32 @@ export default function PropertyDetails() {
           marginTop: 24,
         }}
       >
-
-        <h3
-          style={{
-            marginTop: 0,
-          }}
-        >
-
+        <h3 style={{ marginTop: 0 }}>
           📅 Timeline
-
         </h3>
 
-        {
-          analytics.timeline.length === 0 ? (
-
-            <p>
-
-              No timeline events recorded.
-
-            </p>
-
-          ) : (
-
-            <ul>
-
-              {
-                analytics.timeline.map(
-                  (event, index) => (
-                    <li key={index}>
-
-                      <strong>
-
-                        {event.title}
-
-                      </strong>
-
-                      {" • "}
-
-                      {event.date}
-
-                    </li>
-                  )
-                )
-              }
-
-            </ul>
-
-          )
-        }
-
+        {analytics.timeline.length === 0 ? (
+          <p>
+            No timeline events recorded.
+          </p>
+        ) : (
+          <ul>
+            {analytics.timeline.map(
+              (event, index) => (
+                <li key={index}>
+                  <strong>
+                    {event.title}
+                  </strong>
+                  {" • "}
+                  {event.date}
+                </li>
+              )
+            )}
+          </ul>
+        )}
       </div>
-            <div
+
+      <div
         style={{
           display: "flex",
           gap: 16,
@@ -232,16 +183,15 @@ export default function PropertyDetails() {
           marginTop: 28,
         }}
       >
-
         <button
           className="primary-button"
           onClick={() =>
-            navigate(`/property/${id}/edit`)
+            navigate(
+              `/property/${id}/edit`
+            )
           }
         >
-
           ✏ Edit Property
-
         </button>
 
         <button
@@ -251,57 +201,45 @@ export default function PropertyDetails() {
           }}
           onClick={handleDelete}
         >
-
           🗑 Delete Property
-
         </button>
-
       </div>
 
-      <div
-        style={{
-          height: 32,
-        }}
-      />
+      <div style={{ height: 32 }} />
+
       <hr
         style={{
           marginTop: 32,
           marginBottom: 24,
           border: "none",
-          borderTop: "1px solid #303544",
+          borderTop:
+            "1px solid #303544",
         }}
       />
 
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           alignItems: "center",
           flexWrap: "wrap",
           gap: 16,
         }}
       >
-
-        <small
-          className="page-subtitle"
-        >
-
-          Last updated from your saved investment data.
-
+        <small className="page-subtitle">
+          Latest position is based on your
+          saved property data and monthly
+          check-ins.
         </small>
 
         <Link
           to="/portfolio"
           className="page-subtitle"
         >
-
           ← Return to Portfolio
-
         </Link>
-
       </div>
-
     </div>
-      );
-
+  );
 }

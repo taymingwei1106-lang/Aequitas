@@ -7,8 +7,15 @@ export default function PropertyCard({ property }) {
   const purchasePrice = Number(property.purchasePrice || 0);
   const outstandingLoan = Number(property.outstandingLoan || 0);
   const monthlyRental = Number(property.monthlyRental || 0);
+  const monthlyInstalment = Number(property.monthlyInstalment || 0);
+  const maintenanceFee = Number(property.maintenanceFee || 0);
 
-  const estimatedCashflow = monthlyRental;
+  // Keep the Property Card consistent with Portfolio cashflow:
+  // rental income less recurring loan instalment and maintenance.
+  const estimatedCashflow =
+    monthlyRental -
+    monthlyInstalment -
+    maintenanceFee;
 
   const health =
     purchasePrice === 0

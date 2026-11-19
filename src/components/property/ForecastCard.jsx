@@ -21,6 +21,14 @@ export default function ForecastCard({
   const years =
     forecast.years ?? 5;
 
+  const assumptions = forecast.assumptions ?? {
+    annualGrowthRate: 4,
+    annualRentalGrowth: 2,
+    loanMethod: "simplified",
+  };
+
+  const amortised = assumptions.loanMethod === "amortised";
+
   return (
     <div className="card">
 
@@ -41,7 +49,7 @@ export default function ForecastCard({
       >
         An illustrative projection based on
         your current property information and
-        Aequitas' default assumptions.
+        the growth assumptions set in Settings.
       </p>
 
       <div
@@ -75,8 +83,8 @@ export default function ForecastCard({
             style={{
               color:
                 capitalGrowth >= 0
-                  ? "#22C55E"
-                  : "#EF4444",
+                  ? "var(--color-success)"
+                  : "var(--color-danger)",
             }}
           >
             {formatCurrency(
@@ -120,7 +128,7 @@ export default function ForecastCard({
         style={{
           marginTop: 22,
           borderTop:
-            "1px solid #303544",
+            "1px solid var(--color-border-strong)",
           paddingTop: 16,
         }}
       >
@@ -139,7 +147,7 @@ export default function ForecastCard({
           style={{
             marginTop: 14,
             color:
-              "var(--color-text-secondary, #b7bac5)",
+              "var(--color-text-secondary, var(--color-text-secondary))",
             lineHeight: 1.65,
           }}
         >
@@ -159,7 +167,7 @@ export default function ForecastCard({
 
             <li>
               <strong>
-                Property growth: 4% per year
+                Property growth: {assumptions.annualGrowthRate}% per year
               </strong>
               {" "}
               — the current property value is
@@ -169,7 +177,7 @@ export default function ForecastCard({
 
             <li>
               <strong>
-                Rental growth: 2% per year
+                Rental growth: {assumptions.annualRentalGrowth}% per year
               </strong>
               {" "}
               — current monthly rental is
@@ -178,12 +186,14 @@ export default function ForecastCard({
 
             <li>
               <strong>
-                Loan reduction: 2% per year
+                {amortised
+                  ? `Loan: repaid at ${assumptions.interestRate}% interest`
+                  : "Loan reduction: 2% per year"}
               </strong>
               {" "}
-              — the current model applies a
-              simplified annual reduction to
-              the outstanding loan.
+              {amortised
+                ? "— the balance is projected month by month using your recorded interest rate and instalment."
+                : "— a simplified reduction, because no interest rate is recorded. Add one in Edit Property for a real projection."}
             </li>
 
             <li>
@@ -212,7 +222,7 @@ export default function ForecastCard({
         style={{
           marginTop: 16,
           borderTop:
-            "1px solid #303544",
+            "1px solid var(--color-border-strong)",
           paddingTop: 16,
         }}
       >
@@ -248,7 +258,7 @@ export default function ForecastCard({
             </span>
 
             <strong>
-              4% p.a.
+              {assumptions.annualGrowthRate}% p.a.
             </strong>
           </div>
 
@@ -265,7 +275,7 @@ export default function ForecastCard({
             </span>
 
             <strong>
-              2% p.a.
+              {assumptions.annualRentalGrowth}% p.a.
             </strong>
           </div>
 
@@ -278,11 +288,13 @@ export default function ForecastCard({
             }}
           >
             <span>
-              Loan reduction
+              Loan
             </span>
 
             <strong>
-              2% p.a.
+              {amortised
+                ? `Amortised at ${assumptions.interestRate}%`
+                : "Simplified 2% p.a."}
             </strong>
           </div>
 
@@ -312,17 +324,18 @@ export default function ForecastCard({
           marginTop: 18,
           padding: 14,
           borderRadius: 10,
-          background: "#1d2029",
+          background: "var(--color-surface-elevated)",
           fontSize: 13,
           color:
-            "var(--color-text-secondary, #b7bac5)",
+            "var(--color-text-secondary, var(--color-text-secondary))",
           lineHeight: 1.55,
         }}
       >
         ⚠️ This is an illustrative projection.
         Actual property values, rental income
         and loan balances may differ significantly
-        from these assumptions.
+        from these assumptions. Growth rates can be
+        changed in Settings.
       </div>
 
     </div>

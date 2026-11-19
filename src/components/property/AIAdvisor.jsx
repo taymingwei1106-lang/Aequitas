@@ -1,246 +1,220 @@
+import { useMemo } from "react";
+
 import { calculatePerformanceIntelligence } from "../../utils/PerformanceIntelligenceEngine";
+import { buildAdvisorReport } from "../../utils/advisorEngine";
+import { getMonthlyCheckins } from "../../services/monthlyCheckinStorage";
+import { formatMonth, formatRM } from "../../utils/propertyFinancials";
 
-function formatRM(value) {
-  const number = Number(value) || 0;
-  return `RM ${number.toLocaleString(undefined, {
-    maximumFractionDigits: 0,
-  })}`;
-}
+const TONE = {
+  positive: { color: "var(--color-success)", background: "rgba(34,197,94,0.12)" },
+  negative: { color: "var(--color-negative)", background: "rgba(249,115,22,0.12)" },
+  neutral: { color: "var(--color-text)", background: "rgba(203,213,225,0.10)" },
+};
 
-function formatMovement(value) {
-  const number = Number(value) || 0;
-  const prefix = number > 0 ? "+" : "";
-  return `${prefix}${formatRM(number)}`;
-}
-
-function getTrendLabel(trend) {
-  if (trend === "improving") return "Improving";
-  if (trend === "weakening") return "Weakening";
-  if (trend === "stable") return "Stable";
-  return "Not enough history";
-}
-
-export default function AIAdvisor({ analytics, property }) {
-  const cashflow = Number(analytics?.profit?.monthlyProfit) || 0;
-  const yieldValue = Number(analytics?.rentalYield?.grossYield) || 0;
-  const equity = Number(analytics?.equity?.equity) || 0;
-
-  const purchasePrice =
-    Number(analytics?.investment?.purchasePrice) || 0;
-  const marketValue = Number(analytics?.equity?.market) || 0;
-  const growth = marketValue - purchasePrice;
-
-  const performance = property
-    ? calculatePerformanceIntelligence(property.id)
-    : null;
-
-  const hasThreeMonths = Boolean(
-    performance?.hasEnoughHistory ||
-      performance?.monthsAnalysed >= 3 ||
-      performance?.monthsAnalyzed >= 3
-  );
-
-  let recommendation =
-    "Continue monitoring this investment.";
-
-  if (hasThreeMonths) {
-    if (performance.overallTrend === "weakening") {
-      recommendation =
-        "Review the recent performance before making a major change.";
-    } else if (performance.overallTrend === "improving") {
-      recommendation =
-        "Continue monitoring. Recent performance is improving.";
-    } else if (performance.overallTrend === "stable") {
-      recommendation =
-        "Continue monitoring. Recent performance is broadly stable.";
-    }
-  } else if (cashflow < 0) {
-    recommendation =
-      "Review expenses or rental income before considering a major strategy change.";
-  } else if (cashflow >= 0 && growth > 0) {
-    recommendation =
-      "Continue monitoring. The current snapshot is positive, but longer-term history should guide major decisions.";
-  }
-
-  const movements = performance?.movements || performance?.changes || {};
-
-  const cashflowMovement =
-    movements.cashflow ??
-    movements.monthlyCashflow ??
-    performance?.cashflowMovement ??
-    0;
-
-  const rentalMovement =
-    movements.rental ??
-    movements.rentalIncome ??
-    movements.monthlyRental ??
-    performance?.rentalMovement ??
-    0;
-
-  const loanMovement =
-    movements.loanBalance ??
-    movements.outstandingLoan ??
-    movements.loan ??
-    performance?.loanBalanceMovement ??
-    0;
-
-  const maintenanceMovement =
-    movements.maintenanceAndExpenses ??
-    movements.maintenanceExpenses ??
-    movements.expenses ??
-    movements.maintenance ??
-    performance?.expenseMovement ??
-    0;
-
-  const marketValueMovement =
-    movements.marketValue ??
-    movements.value ??
-    performance?.marketValueMovement ??
-    0;
-
+function SectionLabel({ children }) {
   return (
-    <div className="card">
-      <h3 style={{ marginTop: 0 }}>🧠 Aequitas Advisor</h3>
+    <div
+      className="page-subtitle"
+      style={{
+        fontSize: 12,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        marginBottom: 10,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
-      <p>
-        Overall, this investment is
-        {cashflow >= 0
-          ? " generating positive monthly cashflow."
-          : " currently operating at a monthly loss."}
-      </p>
+function buildReport(property) {
+  try {
+    const performance = calculatePerformanceIntelligence(property);
+    const checkins = getMonthlyCheckins(property.id);
+    return { report: buildAdvisorReport(property, performance, checkins) };
+  } catch (error) {
+    // The Advisor must never take the page down with it.
+    console.error("Aequitas Advisor could not build its report:", error);
+    return { report: null };
+  }
+}
 
-      <p>
-        Rental yield currently stands at{" "}
-        <strong>{yieldValue.toFixed(2)}%</strong>.
-      </p>
+export default function AIAdvisor({ property }) {
+  const { report } = useMemo(() => buildReport(property), [property]);
 
-      <p>
-        Current equity has reached <strong>{formatRM(equity)}</strong>.
-      </p>
-
-      <p>
-        Capital appreciation totals <strong>{formatRM(growth)}</strong>.
-      </p>
-
-      <div
-        style={{
-          marginTop: 24,
-          padding: 18,
-          borderRadius: 12,
-          background: "#1D2533",
-        }}
-      >
-        <strong>Recommendation</strong>
-
-        <p
-          style={{
-            marginBottom: 0,
-            marginTop: 10,
-          }}
-        >
-          {recommendation}
+  if (!report) {
+    return (
+      <div className="card">
+        <h3 style={{ marginTop: 0 }}>🧠 Aequitas Advisor</h3>
+        <p className="page-subtitle" style={{ marginBottom: 0 }}>
+          The Advisor couldn't interpret this property's data right now. The
+          Overview and Monthly tabs are unaffected. If this keeps happening,
+          check the property's figures for unusual entries.
         </p>
       </div>
+    );
+  }
 
-      {hasThreeMonths && (
-        <details style={{ marginTop: 20 }}>
-          <summary
-            style={{
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Why is Aequitas saying this?
-          </summary>
+  const tone = TONE[report.status.tone] || TONE.neutral;
 
-          <div style={{ marginTop: 16 }}>
-            <p style={{ marginTop: 0 }}>
-              Aequitas is looking at the recent monthly history rather than
-              relying only on today's snapshot.
-            </p>
-
-            <p>
-              <strong>Recent trend:</strong>{" "}
-              {getTrendLabel(performance?.overallTrend)}
-            </p>
-
-            {performance?.summary && (
-              <p>
-                <strong>Summary:</strong> {performance.summary}
-              </p>
-            )}
-
-            <div
-              style={{
-                display: "grid",
-                gap: 10,
-                marginTop: 16,
-              }}
-            >
-              <div>
-                <strong>Cashflow movement:</strong>{" "}
-                {formatMovement(cashflowMovement)}
-              </div>
-
-              <div>
-                <strong>Rental movement:</strong>{" "}
-                {formatMovement(rentalMovement)}
-              </div>
-
-              <div>
-                <strong>Loan balance movement:</strong>{" "}
-                {formatMovement(loanMovement)}
-              </div>
-
-              <div>
-                <strong>Maintenance & expenses movement:</strong>{" "}
-                {formatMovement(maintenanceMovement)}
-              </div>
-
-              <div>
-                <strong>Market value movement:</strong>{" "}
-                {formatMovement(marketValueMovement)}
-              </div>
-            </div>
-
-            <div
-              style={{
-                marginTop: 18,
-                padding: 14,
-                borderRadius: 10,
-                background: "#151B26",
-              }}
-            >
-              <strong>What to watch</strong>
-              <p style={{ marginBottom: 0, marginTop: 8 }}>
-                Watch whether the recent direction continues. A short-term
-                movement does not automatically mean the property should be
-                sold, refinanced, or otherwise changed. Major decisions should
-                also consider your investment objective, financing terms,
-                transaction costs, and the quality of the underlying data.
-              </p>
-            </div>
-          </div>
-        </details>
-      )}
-
-      {!hasThreeMonths && (
-        <div
+  return (
+    <div className="card" style={{ display: "grid", gap: 24 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <h3 style={{ margin: 0 }}>🧠 Aequitas Advisor</h3>
+        <span
           style={{
-            marginTop: 20,
-            padding: 16,
-            borderRadius: 10,
-            background: "#151B26",
+            padding: "6px 12px",
+            borderRadius: 999,
+            fontSize: 13,
+            fontWeight: 600,
+            color: tone.color,
+            background: tone.background,
           }}
         >
-          <strong>Performance history</strong>
-          <p style={{ marginBottom: 0, marginTop: 8 }}>
-            Aequitas will become more informative as more monthly check-ins are
-            recorded. Major strategy changes are better assessed using a
-            consistent history rather than a single month's result.
-          </p>
+          {report.status.label}
+        </span>
+      </div>
+
+      <section>
+        <SectionLabel>What is happening</SectionLabel>
+        <div style={{ display: "grid", gap: 10 }}>
+          {report.happening.map((text, index) => (
+            <p key={index} style={{ margin: 0, lineHeight: 1.6 }}>
+              {text}
+            </p>
+          ))}
         </div>
+      </section>
+
+      {report.attention.length > 0 && (
+        <section>
+          <SectionLabel>What deserves attention</SectionLabel>
+          <div style={{ display: "grid", gap: 10 }}>
+            {report.attention.map((item, index) => (
+              <div
+                key={`${item.title}-${index}`}
+                style={{
+                  padding: 14,
+                  borderRadius: 10,
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border-strong)",
+                }}
+              >
+                <strong>{item.title}</strong>
+                <p
+                  className="page-subtitle"
+                  style={{ margin: "6px 0 0", lineHeight: 1.55 }}
+                >
+                  {item.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
+
+      <section>
+        <SectionLabel>What to monitor next</SectionLabel>
+        <ul style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 6 }}>
+          {report.monitor.map((text, index) => (
+            <li key={index} style={{ lineHeight: 1.55 }}>
+              {text}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <details>
+        <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+          Why is Aequitas saying this?
+        </summary>
+
+        <div style={{ marginTop: 14, display: "grid", gap: 14 }}>
+          <ul
+            className="page-subtitle"
+            style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 6 }}
+          >
+            {report.why.basis.map((text, index) => (
+              <li key={index} style={{ lineHeight: 1.55 }}>
+                {text}
+              </li>
+            ))}
+          </ul>
+
+          {report.why.months.length > 0 && (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 13,
+                }}
+              >
+                <thead>
+                  <tr className="page-subtitle" style={{ textAlign: "right" }}>
+                    <th style={{ textAlign: "left", padding: "6px 8px" }}>
+                      Month
+                    </th>
+                    <th style={{ padding: "6px 8px" }}>Rent</th>
+                    <th style={{ padding: "6px 8px" }}>Instalment</th>
+                    <th style={{ padding: "6px 8px" }}>Expenses</th>
+                    <th style={{ padding: "6px 8px" }}>Cashflow</th>
+                    <th style={{ padding: "6px 8px" }}>Loan balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.why.months.map((m) => (
+                    <tr
+                      key={m.month}
+                      style={{
+                        borderTop: "1px solid var(--color-border-strong)",
+                        textAlign: "right",
+                      }}
+                    >
+                      <td style={{ textAlign: "left", padding: "8px" }}>
+                        {formatMonth(m.month)}
+                        {m.note && (
+                          <div className="page-subtitle" style={{ fontSize: 11 }}>
+                            {m.note}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: 8 }}>{formatRM(m.rental)}</td>
+                      <td style={{ padding: 8 }}>{formatRM(m.instalment)}</td>
+                      <td style={{ padding: 8 }}>{formatRM(m.expenses, 2)}</td>
+                      <td
+                        style={{
+                          padding: 8,
+                          color: m.cashflow >= 0 ? "var(--color-success)" : "var(--color-negative)",
+                        }}
+                      >
+                        {formatRM(m.cashflow, 2)}
+                      </td>
+                      <td style={{ padding: 8 }}>
+                        {m.loan === null ? "—" : formatRM(m.loan, 2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </details>
+
+      <p className="page-subtitle" style={{ margin: 0, fontSize: 12 }}>
+        Aequitas explains your recorded figures. It does not recommend buying,
+        selling or refinancing; those decisions also depend on your objectives,
+        financing terms and costs.
+      </p>
     </div>
   );
 }

@@ -1,186 +1,122 @@
-import { useNavigate } from "react-router-dom";
-import formatCurrency from "../utils/formatCurrency";
+import { Link } from "react-router-dom";
 
-export default function PropertyCard({ property }) {
-  const navigate = useNavigate();
+import StatusPill from "./StatusPill";
+import FreshnessBadge from "./FreshnessBadge";
+import { formatRM } from "../utils/propertyFinancials";
 
-  const purchasePrice = Number(property.purchasePrice || 0);
-  const outstandingLoan = Number(property.outstandingLoan || 0);
-  const monthlyRental = Number(property.monthlyRental || 0);
-  const monthlyInstalment = Number(property.monthlyInstalment || 0);
-  const maintenanceFee = Number(property.maintenanceFee || 0);
+/*
+ * Portfolio property card — built around what the investor acts on:
+ * status and its reason, the key figures, and whether this month's
+ * check-in has been recorded.
+ *
+ * `assessment` comes from assessProperty(); `freshness` from getFreshness().
+ */
 
-  // Keep the Property Card consistent with Portfolio cashflow:
-  // rental income less recurring loan instalment and maintenance.
-  const estimatedCashflow =
-    monthlyRental -
-    monthlyInstalment -
-    maintenanceFee;
+function Figure({ label, value, note, color }) {
+  return (
+    <div>
+      <div className="card-label">{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4, color: color || "inherit" }}>
+        {value}
+      </div>
+      {note && (
+        <div style={{ fontSize: 12, marginTop: 2, color: "var(--color-text-muted)" }}>
+          {note}
+        </div>
+      )}
+    </div>
+  );
+}
 
-  const health =
-    purchasePrice === 0
-      ? 60
-      : Math.min(
-          95,
-          Math.max(
-            55,
-            Math.round(
-              100 - (outstandingLoan / purchasePrice) * 35
-            )
-          )
-        );
+export default function PropertyCard({ property, assessment, freshness }) {
+  const { figures, statusMeta, concerns } = assessment;
+  const purchaseBased = figures.valueSource !== "market";
+
+  const reason = concerns.length
+    ? concerns.map((c) => c.short).join(" and ")
+    : statusMeta.label === "On track"
+    ? "cashflow and leverage within range"
+    : "";
 
   return (
-    <div
-      className="card property-card"
-      onClick={() => navigate(`/property/${property.id}`)}
-    >
-      {/* Header */}
-
+    <div className="card" style={{ marginTop: 14, display: "grid", gap: 18 }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
+          gap: 12,
+          flexWrap: "wrap",
         }}
       >
         <div>
-          <h2
-            style={{
-              margin: 0,
-            }}
+          <Link
+            to={`/property/${property.id}`}
+            style={{ color: "inherit", textDecoration: "none" }}
           >
-            🏢 {property.projectName}
-          </h2>
-
-          <p
-            className="page-subtitle"
-            style={{
-              marginTop: 8,
-            }}
-          >
-            Investment Property
-          </p>
+            <h3 style={{ margin: 0 }}>🏢 {property.projectName || "Unnamed property"}</h3>
+          </Link>
+          {reason && (
+            <div style={{ marginTop: 6, fontSize: 14, color: "var(--color-text-secondary)" }}>
+              {reason.charAt(0).toUpperCase() + reason.slice(1)}
+            </div>
+          )}
         </div>
-
-        <div
-          style={{
-            background: "var(--color-primary-soft)",
-            color: "var(--color-primary)",
-            padding: "8px 14px",
-            borderRadius: 999,
-            fontWeight: 600,
-            fontSize: 13,
-          }}
-        >
-          {health}% Health
-        </div>
+        <StatusPill tone={statusMeta.tone}>{statusMeta.label}</StatusPill>
       </div>
-
-      <div style={{ height: 24 }} />
-
-      {/* Metrics */}
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 18,
+          gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
+          gap: 16,
         }}
       >
-        <div>
-          <div className="card-label">
-            Purchase
-          </div>
-
-          <h3>
-            RM {formatCurrency(purchasePrice)}
-          </h3>
-        </div>
-
-        <div>
-          <div className="card-label">
-            Loan
-          </div>
-
-          <h3>
-            RM {formatCurrency(outstandingLoan)}
-          </h3>
-        </div>
-
-        <div>
-          <div className="card-label">
-            Rental
-          </div>
-
-          <h3>
-            RM {formatCurrency(monthlyRental)}
-          </h3>
-        </div>
-
-        <div>
-          <div className="card-label">
-            Cashflow
-          </div>
-
-          <h3
-            style={{
-              color:
-                estimatedCashflow > 0
-                  ? "#22c55e"
-                  : "#ef4444",
-            }}
-          >
-            {estimatedCashflow > 0 ? "+" : ""}
-            RM {formatCurrency(estimatedCashflow)}
-          </h3>
-        </div>
-      </div>
-
-      <div
-        style={{
-          marginTop: 24,
-          height: 8,
-          background: "#23232d",
-          borderRadius: 999,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${health}%`,
-            height: "100%",
-            background:
-              "linear-gradient(90deg,#4F8CFF,#67B7FF)",
-          }}
+        <Figure
+          label={purchaseBased ? "Value (purchase price)" : "Market value"}
+          value={formatRM(figures.value)}
+        />
+        <Figure label="Outstanding loan" value={formatRM(figures.loan)} />
+        <Figure
+          label="Monthly cashflow"
+          value={formatRM(figures.cashflow)}
+          color={figures.cashflow >= 0 ? "var(--color-success)" : "var(--color-negative)"}
+        />
+        <Figure
+          label="Loan-to-value"
+          value={figures.ltv === null ? "—" : `${(figures.ltv * 100).toFixed(0)}%`}
         />
       </div>
 
       <div
         style={{
-          marginTop: 10,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+          paddingTop: 14,
+          borderTop: "1px solid var(--color-border)",
         }}
       >
-        <span
-          className="page-subtitle"
-          style={{
-            margin: 0,
-          }}
-        >
-          Portfolio Health
-        </span>
+        <FreshnessBadge freshness={freshness} showNextDue />
 
-        <span
-          style={{
-            color: "var(--color-primary)",
-            fontWeight: 700,
-          }}
-        >
-          View Investment →
-        </span>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link to={`/property/${property.id}?tab=monthly`}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: "10px 16px", borderRadius: 12, fontWeight: 600, cursor: "pointer" }}
+            >
+              Record check-in
+            </button>
+          </Link>
+          <Link to={`/property/${property.id}`}>
+            <button type="button" className="primary-button" style={{ width: "auto", padding: "10px 16px" }}>
+              View →
+            </button>
+          </Link>
+        </div>
       </div>
     </div>
   );

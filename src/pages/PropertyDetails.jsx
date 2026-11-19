@@ -1,25 +1,59 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import { getProperty, deleteProperty } from "../services/storage";
+import {
+  getProperty,
+  deleteProperty,
+  updateProperty,
+} from "../services/storage";
+import { getMonthlyCheckins } from "../services/monthlyCheckinStorage";
+import {
+  findRecordMismatch,
+  formatMonth,
+  formatRM,
+} from "../utils/propertyFinancials";
+import ErrorBoundary from "../components/ErrorBoundary";
 import { calculatePropertyAnalytics } from "../utils/propertyAnalyticsEngine";
 
 import ExecutiveSummary from "../components/ExecutiveSummary";
 import FinancialCentre from "../components/property/FinancialCentre";
-import HealthReport from "../components/property/HealthReport";
 import ExpenseBreakdown from "../components/property/ExpenseBreakdown";
 import InvestmentBreakdown from "../components/property/InvestmentBreakdown";
 import AIAdvisor from "../components/property/AIAdvisor";
-import RiskAssessment from "../components/property/RiskAssessment";
 import ForecastCard from "../components/property/ForecastCard";
 import MonthlyCheckinCard from "../components/property/MonthlyCheckinCard";
+import CompletenessCard from "../components/property/CompletenessCard";
+import PropertyTimeline from "../components/property/PropertyTimeline";
+import DocumentsCard from "../components/property/DocumentsCard";
+import YearlyBillsCard from "../components/property/YearlyBillsCard";
+import TenantCard from "../components/property/TenantCard";
+import { removeFilesForProperty } from "../services/fileStore";
+import FreshnessBadge from "../components/FreshnessBadge";
+import { getFreshness } from "../utils/freshnessEngine";
 import PerformanceTrendCard from "../components/property/PerformanceTrendCard";
+import LoanCard from "../components/property/LoanCard";
 
-const TABS = [
-  { id: "overview", label: "Overview", icon: "🏠" },
-  { id: "monthly", label: "Monthly", icon: "📝" },
-  { id: "intelligence", label: "Intelligence", icon: "📊" },
-  { id: "advisor", label: "Advisor", icon: "🧠" },
+const tabs = [
+  {
+    id: "overview",
+    label: "Overview",
+    description: "Understand",
+  },
+  {
+    id: "monthly",
+    label: "Monthly",
+    description: "Record",
+  },
+  {
+    id: "intelligence",
+    label: "Intelligence",
+    description: "Investigate",
+  },
+  {
+    id: "advisor",
+    label: "Advisor",
+    description: "Interpret",
+  },
 ];
 
 export default function PropertyDetails() {
@@ -27,10 +61,35 @@ export default function PropertyDetails() {
   const navigate = useNavigate();
 
   const [property, setProperty] = useState(() => getProperty(id));
-  const [activeTab, setActiveTab] = useState("overview");
+  // Allow links such as /property/123?tab=monthly to open a specific tab.
+  const [searchParams] = useSearchParams();
+  const requestedTab = ["overview", "monthly", "intelligence", "advisor"].includes(
+    searchParams.get("tab")
+  )
+    ? searchParams.get("tab")
+    : "overview";
+  const [activeTab, setActiveTab] = useState(requestedTab);
+  const [reconcileDismissed, setReconcileDismissed] = useState(false);
+  const justAdded = searchParams.get("added") === "1";
+
+  // Links such as ?tab=monthly#documents, #tenant or #yearly-bills scroll to that section.
+  useEffect(() => {
+    const target = window.location.hash.slice(1);
+    if (activeTab !== "monthly" || !["documents", "yearly-bills", "tenant", "checkin"].includes(target)) return;
+    const timer = setTimeout(() => {
+      document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [activeTab]);
 
   useEffect(() => {
     setProperty(getProperty(id));
+  }, [id]);
+
+  useEffect(() => {
+    setActiveTab(requestedTab);
+    // Reset only when moving to a different property.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (!property) {
@@ -44,9 +103,45 @@ export default function PropertyDetails() {
 
   const analytics = calculatePropertyAnalytics(property);
 
-  function handleDelete() {
-    if (!window.confirm("Delete this property?")) return;
+  /*
+   * Surface (never silently fix) a difference between the property record
+   * and its latest check-in. The user decides whether to update the record.
+   */
+  const checkins = getMonthlyCheckins(property.id);
+  const loanMismatch = findRecordMismatch(
+    property,
+    checkins,
+    "outstandingLoan",
+    "outstandingLoan"
+  );
+  const valueMismatch = (() => {
+    const mismatch = findRecordMismatch(
+      property,
+      checkins,
+      "marketValue",
+      "marketValue"
+    );
+    return mismatch && mismatch.checkinValue > 0 ? mismatch : null;
+  })();
+
+  function applyCheckinToRecord() {
+    const update = {};
+    if (loanMismatch) update.outstandingLoan = loanMismatch.checkinValue;
+    if (valueMismatch) update.marketValue = valueMismatch.checkinValue;
+    updateProperty(id, update);
+    refreshProperty();
+  }
+
+  async function handleDelete() {
+    if (
+      !window.confirm(
+        "Delete this property?\n\nThe property and any documents saved for it on this device will be removed. Download a backup first if you may need them."
+      )
+    )
+      return;
     deleteProperty(id);
+    // Files belong to the property; leaving them would use space with no way to reach them.
+    await removeFilesForProperty(id).catch(() => {});
     navigate("/portfolio");
   }
 
@@ -54,58 +149,36 @@ export default function PropertyDetails() {
     setProperty(getProperty(id));
   }
 
-  const monthlyCashflow = Number(analytics?.profit?.monthlyProfit || 0);
-  const rentalYield = Number(analytics?.rentalYield?.grossYield || 0);
-  const equity = Number(analytics?.equity?.equity || 0);
-
-  const healthScore =
-    Number(
-      analytics?.health?.score ??
-        analytics?.investmentHealth?.score ??
-        analytics?.healthScore ??
-        0
-    ) || 0;
-
-  const riskScore =
-    Number(
-      analytics?.risk?.score ??
-        analytics?.riskAssessment?.score ??
-        analytics?.riskScore ??
-        0
-    ) || 0;
-
   return (
     <div className="page-container">
       <Link to="/portfolio" className="page-subtitle">
         ← Back to Portfolio
       </Link>
 
-      <div style={{ marginTop: 18 }}>
-        <ExecutiveSummary property={property} analytics={analytics} />
-      </div>
+      <div style={{ marginTop: 14 }}>
+        <div className="page-header">
+          <p className="page-subtitle" style={{ marginBottom: 4 }}>
+            PROPERTY
+          </p>
+          <h1 style={{ marginTop: 0, marginBottom: 8 }}>
+            {property.projectName || "Unnamed Property"}
+          </h1>
+          <FreshnessBadge freshness={getFreshness(property)} showNextDue />
+        </div>
 
-      <section
-        style={{
-          marginTop: 24,
-          position: "sticky",
-          top: 0,
-          zIndex: 5,
-          padding: "8px 0 12px",
-          background: "var(--background, #0b0b10)",
-        }}
-      >
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gridTemplateColumns: "repeat(4,minmax(0,1fr))",
             gap: 8,
+            marginTop: 20,
             padding: 6,
-            borderRadius: 14,
-            background: "#15171f",
-            border: "1px solid #303544",
+            border: "1px solid var(--color-border-strong)",
+            borderRadius: 16,
+            background: "var(--color-surface-sunken)",
           }}
         >
-          {TABS.map((tab) => {
+          {tabs.map((tab) => {
             const active = activeTab === tab.id;
 
             return (
@@ -115,203 +188,320 @@ export default function PropertyDetails() {
                 onClick={() => setActiveTab(tab.id)}
                 style={{
                   border: "none",
-                  borderRadius: 10,
-                  padding: "11px 8px",
-                  background: active ? "#263b62" : "transparent",
-                  color: "inherit",
+                  borderRadius: 12,
+                  padding: "12px 8px",
+                  background: active ? "var(--color-surface-elevated)" : "transparent",
+                  color: active ? "var(--color-text)" : "var(--color-text-secondary)",
                   cursor: "pointer",
-                  fontWeight: active ? 700 : 500,
+                  textAlign: "center",
                 }}
               >
-                <span style={{ display: "block", fontSize: 16 }}>
-                  {tab.icon}
-                </span>
-                <span style={{ fontSize: 12 }}>{tab.label}</span>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 14,
+                  }}
+                >
+                  {tab.label}
+                </div>
+                <div
+                  style={{
+                    marginTop: 3,
+                    fontSize: 11,
+                    opacity: 0.8,
+                  }}
+                >
+                  {tab.description}
+                </div>
               </button>
             );
           })}
         </div>
-      </section>
+      </div>
 
-      {activeTab === "overview" && (
-        <section style={{ marginTop: 10 }}>
-          <section className="page-header">
-            <p className="page-subtitle">PROPERTY OVERVIEW</p>
-            <h2>Financial Position</h2>
-            <p className="page-subtitle">
-              A simple view of where the investment stands today.
-            </p>
-          </section>
-
-          <FinancialCentre analytics={analytics} />
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit,minmax(180px,1fr))",
-              gap: 12,
-              marginTop: 20,
-            }}
-          >
-            <div
-              className="card"
-              style={{ padding: 16 }}
+      {(loanMismatch || valueMismatch) && !reconcileDismissed && (
+        <section
+          role="status"
+          style={{
+            marginTop: 20,
+            padding: 16,
+            borderRadius: 14,
+            border: "1px solid var(--color-warning-border)",
+            background: "rgba(245,158,11,0.08)",
+          }}
+        >
+          <strong>Property record differs from the latest check-in</strong>
+          <ul className="page-subtitle" style={{ margin: "8px 0 0", paddingLeft: 20, lineHeight: 1.6 }}>
+            {loanMismatch && (
+              <li>
+                Outstanding loan: record shows{" "}
+                {loanMismatch.recordValue === null
+                  ? "nothing"
+                  : formatRM(loanMismatch.recordValue, 2)}
+                ; {formatMonth(loanMismatch.month)} check-in shows{" "}
+                {formatRM(loanMismatch.checkinValue, 2)}.
+                {loanMismatch.recordValue !== null &&
+                  loanMismatch.checkinValue > loanMismatch.recordValue &&
+                  " The check-in figure is higher, so confirm it against your loan statement first."}
+              </li>
+            )}
+            {valueMismatch && (
+              <li>
+                Market value: record shows{" "}
+                {valueMismatch.recordValue === null
+                  ? "nothing"
+                  : formatRM(valueMismatch.recordValue)}
+                ; {formatMonth(valueMismatch.month)} check-in shows{" "}
+                {formatRM(valueMismatch.checkinValue)}.
+              </li>
+            )}
+          </ul>
+          <p className="page-subtitle" style={{ margin: "8px 0 12px", fontSize: 13 }}>
+            Equity and loan figures use the property record. Updating it copies
+            the check-in figures above; nothing else changes.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="primary-button"
+              style={{ width: "auto" }}
+              onClick={applyCheckinToRecord}
             >
-              <div className="card-label">Health</div>
-              <strong>
-                {healthScore > 0 ? `${healthScore}/100` : "Available"}
-              </strong>
-            </div>
-
-            <div
-              className="card"
-              style={{ padding: 16 }}
+              Update property record
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: "12px 18px", borderRadius: 12, fontWeight: 600, cursor: "pointer" }}
+              onClick={() => setReconcileDismissed(true)}
             >
-              <div className="card-label">Risk</div>
-              <strong>
-                {riskScore > 0 ? riskScore : "Available"}
-              </strong>
-            </div>
-
-            <div
-              className="card"
-              style={{ padding: 16 }}
-            >
-              <div className="card-label">Monthly Cashflow</div>
-              <strong
-                style={{
-                  color: monthlyCashflow >= 0 ? "#22C55E" : "#F97316",
-                }}
-              >
-                RM{" "}
-                {monthlyCashflow.toLocaleString(undefined, {
-                  maximumFractionDigits: 0,
-                })}
-              </strong>
-            </div>
-
-            <div
-              className="card"
-              style={{ padding: 16 }}
-            >
-              <div className="card-label">Rental Yield</div>
-              <strong>{rentalYield.toFixed(2)}%</strong>
-            </div>
-
-            <div
-              className="card"
-              style={{ padding: 16 }}
-            >
-              <div className="card-label">Equity</div>
-              <strong>
-                RM{" "}
-                {equity.toLocaleString(undefined, {
-                  maximumFractionDigits: 0,
-                })}
-              </strong>
-            </div>
+              Not now
+            </button>
           </div>
         </section>
       )}
 
+      {activeTab === "overview" && (
+        <ErrorBoundary label="Overview" resetKey={activeTab}>
+        <div style={{ marginTop: 24 }}>
+          <ExecutiveSummary property={property} />
+
+          <CompletenessCard property={property} />
+
+          <PropertyTimeline property={property} />
+
+          <section
+            style={{
+              marginTop: 24,
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))",
+              gap: 12,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveTab("monthly")}
+              className="card"
+              style={{
+                textAlign: "left",
+                cursor: "pointer",
+                color: "inherit",
+                border: "1px solid var(--color-border-strong)",
+              }}
+            >
+              <div className="card-label">NEXT</div>
+              <h3 style={{ margin: "6px 0" }}>📝 Monthly Check-in</h3>
+              <p className="page-subtitle" style={{ margin: 0 }}>
+                Record what actually happened and build your performance history.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("intelligence")}
+              className="card"
+              style={{
+                textAlign: "left",
+                cursor: "pointer",
+                color: "inherit",
+                border: "1px solid var(--color-border-strong)",
+              }}
+            >
+              <div className="card-label">NEXT</div>
+              <h3 style={{ margin: "6px 0" }}>📊 Investment Intelligence</h3>
+              <p className="page-subtitle" style={{ margin: 0 }}>
+                See what is changing, how your loan is being repaid, and what the
+                investment cost.
+              </p>
+            </button>
+
+            <Link
+              to={`/property/${id}/report`}
+              className="card"
+              style={{
+                textAlign: "left",
+                color: "inherit",
+                textDecoration: "none",
+                border: "1px solid var(--color-border-strong)",
+              }}
+            >
+              <div className="card-label">SHARE</div>
+              <h3 style={{ margin: "6px 0" }}>📄 Property report</h3>
+              <p className="page-subtitle" style={{ margin: 0 }}>
+                A one-page summary to save as PDF for a bank, a partner or your records.
+              </p>
+            </Link>
+          </section>
+        </div>
+        </ErrorBoundary>
+      )}
+
       {activeTab === "monthly" && (
-        <section style={{ marginTop: 10 }}>
+        <ErrorBoundary label="Monthly" resetKey={activeTab}>
+        <div style={{ marginTop: 24 }}>
           <section className="page-header">
-            <p className="page-subtitle">INVESTMENT TRACKING</p>
-            <h2>Monthly Performance</h2>
+            <p className="page-subtitle">RECORD</p>
+            <h2>Monthly records</h2>
             <p className="page-subtitle">
-              Record what happened and let Aequitas build the history.
+              This month&apos;s figures, your tenant, yearly bills and documents.
             </p>
           </section>
 
+          {justAdded && (
+            <div
+              role="status"
+              style={{
+                marginBottom: 16,
+                padding: 14,
+                borderRadius: 12,
+                border: "1px solid var(--color-success-border)",
+                background: "var(--color-success-soft)",
+              }}
+            >
+              ✓ <strong>{property.projectName}</strong> has been added. Record this month&apos;s
+              check-in below to start building its history, or come back to it later.
+            </div>
+          )}
+
           <MonthlyCheckinCard
+            key={property.id}
             property={property}
             onSaved={refreshProperty}
           />
 
-          <PerformanceTrendCard property={property} />
-        </section>
+          <TenantCard property={property} onSaved={refreshProperty} />
+
+          <YearlyBillsCard property={property} onSaved={refreshProperty} />
+
+          <DocumentsCard property={property} onSaved={refreshProperty} />
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("intelligence")}
+            className="card"
+            style={{
+              marginTop: 24,
+              width: "100%",
+              textAlign: "left",
+              cursor: "pointer",
+              color: "inherit",
+              border: "1px solid var(--color-border-strong)",
+            }}
+          >
+            <div className="card-label">NEXT</div>
+            <h3 style={{ margin: "6px 0" }}>📈 What is changing?</h3>
+            <p className="page-subtitle" style={{ margin: 0 }}>
+              See how your recorded months compare in the Intelligence tab.
+            </p>
+          </button>
+        </div>
+        </ErrorBoundary>
       )}
 
       {activeTab === "intelligence" && (
-        <section style={{ marginTop: 10 }}>
+        <ErrorBoundary label="Intelligence" resetKey={activeTab}>
+        <div style={{ marginTop: 24 }}>
           <section className="page-header">
-            <p className="page-subtitle">INVESTMENT INTELLIGENCE</p>
-            <h2>Understand the Investment</h2>
+            <p className="page-subtitle">INVESTIGATE</p>
+            <h2>Investment Intelligence</h2>
             <p className="page-subtitle">
-              These tools explain health, risk, forecast and the underlying
-              numbers.
+              What is changing month to month, your financial position, your loan, and what the investment cost.
             </p>
           </section>
+
+          <PerformanceTrendCard property={property} />
+
+          <div style={{ marginTop: 24 }}>
+            <FinancialCentre property={property} />
+          </div>
 
           <div
             style={{
               display: "grid",
               gridTemplateColumns:
                 "repeat(auto-fit,minmax(340px,1fr))",
-              gap: 20,
+              gap: 24,
+              marginTop: 20,
             }}
           >
-            <HealthReport analytics={analytics} />
-            <RiskAssessment analytics={analytics} />
+            <LoanCard property={property} />
             <ForecastCard analytics={analytics} />
             <ExpenseBreakdown property={property} />
             <InvestmentBreakdown property={property} />
           </div>
-        </section>
+        </div>
+        </ErrorBoundary>
       )}
 
       {activeTab === "advisor" && (
-        <section style={{ marginTop: 10 }}>
+        <ErrorBoundary label="Advisor" resetKey={activeTab}>
+        <div style={{ marginTop: 24 }}>
           <section className="page-header">
-            <p className="page-subtitle">AEQUITAS ADVISOR</p>
-            <h2>What should I pay attention to?</h2>
+            <p className="page-subtitle">INTERPRET</p>
+            <h2>Aequitas Advisor</h2>
             <p className="page-subtitle">
-              Aequitas explains the signals instead of asking you to interpret
-              every number yourself.
+              Understand what the recent data may mean, why Aequitas is highlighting it, and what could change the picture.
             </p>
           </section>
 
-          <AIAdvisor analytics={analytics} property={property} />
+          <AIAdvisor
+            analytics={analytics}
+            property={property}
+          />
 
-          <div
+          <section
             style={{
-              marginTop: 18,
-              padding: 16,
-              borderRadius: 12,
-              background: "#111827",
-              border: "1px solid #273244",
+              marginTop: 24,
+              padding: 18,
+              border: "1px solid var(--color-border-strong)",
+              borderRadius: 14,
+              background: "var(--color-surface)",
             }}
           >
-            <strong>Next step</strong>
-            <p
-              className="page-subtitle"
-              style={{ marginBottom: 0, marginTop: 7, lineHeight: 1.55 }}
-            >
-              If a signal needs investigation, use Decision Lab to test a
-              scenario before changing the investment strategy.
+            <div className="card-label">DEEPER ANALYSIS</div>
+            <h3 style={{ margin: "6px 0" }}>🔬 Decision Lab</h3>
+            <p className="page-subtitle" style={{ marginBottom: 14 }}>
+              Test financing, rent, maintenance, property value and exit scenarios using this property's data.
             </p>
-
             <button
               type="button"
               className="primary-button"
-              style={{ marginTop: 12 }}
-              onClick={() => navigate("/decision-lab")}
+              onClick={() => navigate(`/decision-lab?property=${id}`)}
             >
               Open Decision Lab
             </button>
-          </div>
-        </section>
+          </section>
+        </div>
+        </ErrorBoundary>
       )}
 
       <details
         style={{
           marginTop: 28,
-          border: "1px solid #303544",
+          border: "1px solid var(--color-border-strong)",
           borderRadius: 14,
           padding: "0 18px",
-          background: "#11131A",
+          background: "var(--color-surface-sunken)",
         }}
       >
         <summary
@@ -358,7 +548,7 @@ export default function PropertyDetails() {
 
             <button
               className="primary-button"
-              style={{ background: "#B91C1C" }}
+              style={{ background: "var(--color-danger)" }}
               onClick={handleDelete}
             >
               🗑 Delete Property
@@ -368,6 +558,15 @@ export default function PropertyDetails() {
       </details>
 
       <div style={{ height: 32 }} />
+
+      <hr
+        style={{
+          marginTop: 32,
+          marginBottom: 24,
+          border: "none",
+          borderTop: "1px solid var(--color-border-strong)",
+        }}
+      />
 
       <div
         style={{
@@ -379,7 +578,7 @@ export default function PropertyDetails() {
         }}
       >
         <small className="page-subtitle">
-          Latest position is based on saved property data and monthly check-ins.
+          Latest position is based on your saved property data and monthly check-ins.
         </small>
 
         <Link to="/portfolio" className="page-subtitle">

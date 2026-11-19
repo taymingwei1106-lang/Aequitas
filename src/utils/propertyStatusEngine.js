@@ -19,7 +19,7 @@ export function calculatePropertyStatus(property) {
     const appreciation = marketValue - purchasePrice;
 
     let status = "Needs Attention";
-    let colour = "#EF4444";
+    let colour = "var(--color-danger)";
 
     if (
         debtRatio < 0.70 &&
@@ -28,7 +28,7 @@ export function calculatePropertyStatus(property) {
 
         status = "Healthy";
 
-        colour = "#22C55E";
+        colour = "var(--color-success)";
 
     }
 
@@ -40,7 +40,7 @@ export function calculatePropertyStatus(property) {
 
         status = "Excellent";
 
-        colour = "#4F8CFF";
+        colour = "var(--color-primary)";
 
     }
 

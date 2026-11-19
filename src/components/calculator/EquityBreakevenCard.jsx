@@ -349,8 +349,8 @@ export default function EquityBreakevenCard() {
                 style={{
                   color:
                     result.profit >= 0
-                      ? "#16a34a"
-                      : "#dc2626",
+                      ? "var(--color-success)"
+                      : "var(--color-danger)",
                 }}
               >
                 {formatCurrency(result.profit)}

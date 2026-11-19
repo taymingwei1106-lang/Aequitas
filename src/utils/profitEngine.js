@@ -1,55 +1,19 @@
+import { getMonthlyCashflow } from "./propertyFinancials";
+
+/*
+ * Monthly profit = the shared Aequitas cashflow definition
+ * (rental + other income − instalment − recurring expenses).
+ * Return shape is unchanged for existing components.
+ */
 export function calculateProfit(property) {
+    const flow = getMonthlyCashflow(property);
 
-    const rental =
-        Number(property.monthlyRental || 0);
-
-    const instalment =
-        Number(property.monthlyInstalment || 0);
-
-    const maintenance =
-        Number(property.maintenanceFee || 0);
-
-    const insurance =
-        Number(property.insurance || 0);
-
-    const quitRent =
-        Number(property.quitRent || 0);
-
-    const assessment =
-        Number(property.assessmentTax || 0);
-
-    const management =
-        Number(property.managementFee || 0);
-
-    const other =
-        Number(property.otherExpenses || 0);
-
-    const expenses =
-        instalment +
-        maintenance +
-        insurance +
-        quitRent +
-        assessment +
-        management +
-        other;
-
-    const monthlyProfit =
-        rental - expenses;
-
-    const yearlyProfit =
-        monthlyProfit * 12;
+    const monthlyProfit = flow.cashflow;
 
     return {
-
         monthlyProfit,
-
-        yearlyProfit,
-
-        expenses,
-
-        profitable:
-            monthlyProfit >= 0,
-
+        yearlyProfit: monthlyProfit * 12,
+        expenses: flow.outgoings,
+        profitable: monthlyProfit >= 0,
     };
-
 }

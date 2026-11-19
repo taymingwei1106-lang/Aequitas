@@ -20,9 +20,11 @@ export function saveProperty(property) {
 
     const properties = getProperties();
 
+    const id = Date.now();
+
     properties.push({
 
-        id: Date.now(),
+        id,
 
         ...property
 
@@ -32,6 +34,9 @@ export function saveProperty(property) {
         STORAGE_KEY,
         JSON.stringify(properties)
     );
+
+    // Returned so the caller can open the new property.
+    return id;
 
 }
 

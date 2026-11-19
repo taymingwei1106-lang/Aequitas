@@ -1,10 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+
 import {
   saveProperty,
   getProperty,
+  getProperties,
   updateProperty,
 } from "../services/storage";
+import MoneyInput from "../components/MoneyInput";
+
+/*
+ * Add / Edit Investment
+ *
+ *   Step 1  What you bought — name, SPA price, purchase date, value,
+ *           discount and purchase costs (what the property cost)
+ *   Step 2  Financing — loan, instalment, rate, cashback
+ *   Step 3  Monthly flow — rent, other income, recurring expenses
+ *
+ * Required: project name and SPA purchase price. Everything else can be
+ * added later. Amounts are stored as entered (strings); a blank field
+ * means "not entered" and an entered 0 is kept as "0".
+ */
 
 const EXPENSE_TYPES = [
   { value: "maintenanceFee", label: "Maintenance fee" },
@@ -16,6 +32,35 @@ const EXPENSE_TYPES = [
 ];
 
 const LEGACY_EXPENSE_FIELDS = EXPENSE_TYPES.map((item) => item.value);
+
+const COST_FIELDS = [
+  ["legalFees", "Legal fees (SPA and loan agreement)", "e.g. 6,000"],
+  ["stampDuty", "Stamp duty (transfer and loan agreement)", "e.g. 9,500"],
+  ["renovationCost", "Renovation", "e.g. 23,000"],
+  ["furnishingCost", "Furnishing", "e.g. 8,000"],
+  ["miscellaneousCost", "Other purchase costs (e.g. valuation fee)", "e.g. 500"],
+];
+
+const EMPTY_FORM = {
+  projectName: "",
+  purchasePrice: "",
+  purchaseDate: "",
+  purchaseDiscount: "",
+  marketValue: "",
+  renovationCost: "",
+  legalFees: "",
+  stampDuty: "",
+  furnishingCost: "",
+  miscellaneousCost: "",
+  originalLoanAmount: "",
+  outstandingLoan: "",
+  monthlyInstalment: "",
+  interestRate: "",
+  lender: "",
+  loanCashback: "",
+  cashbackSource: "",
+  monthlyRental: "",
+};
 
 function toNumber(value) {
   const number = Number(value);
@@ -43,18 +88,65 @@ function buildExpenseRows(property) {
 
   return LEGACY_EXPENSE_FIELDS.reduce((rows, field) => {
     const amount = property[field];
-
-    if (
-      amount !== "" &&
-      amount !== null &&
-      amount !== undefined &&
-      Number(amount) !== 0
-    ) {
-      rows.push(createExpense(field, amount, ""));
+    if (amount !== "" && amount !== null && amount !== undefined && Number(amount) !== 0) {
+      rows.push(createExpense(field, String(amount), ""));
     }
-
     return rows;
   }, []);
+}
+
+// Keep an entered 0 as "0": blank means "not entered".
+const asText = (value) => (value === null || value === undefined ? "" : String(value));
+
+function TextField({ label, value, onChange, placeholder, hint, error, required, type = "text", name }) {
+  return (
+    <label style={{ display: "grid", gap: 6 }}>
+      <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>
+        {label}
+        {required && <span style={{ color: "var(--color-danger)" }}> *</span>}
+      </span>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        placeholder={placeholder}
+        aria-invalid={Boolean(error)}
+        onChange={(event) => onChange(event.target.value)}
+        style={{ borderColor: error ? "var(--color-danger)" : undefined }}
+      />
+      {error ? (
+        <span style={{ fontSize: 12, color: "var(--color-danger)" }}>{error}</span>
+      ) : (
+        hint && <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{hint}</span>
+      )}
+    </label>
+  );
+}
+
+function Panel({ title, children }) {
+  return (
+    <div
+      style={{
+        border: "1px solid var(--color-border-strong)",
+        borderRadius: 12,
+        padding: 14,
+        background: "var(--color-surface-sunken)",
+        display: "grid",
+        gap: 12,
+      }}
+    >
+      {title && <div style={{ fontWeight: 700, fontSize: 14 }}>{title}</div>}
+      {children}
+    </div>
+  );
+}
+
+function Note({ children }) {
+  return (
+    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: "var(--color-text-secondary)" }}>
+      {children}
+    </p>
+  );
 }
 
 export default function PropertyWizard() {
@@ -62,70 +154,45 @@ export default function PropertyWizard() {
   const { id } = useParams();
   const editing = Boolean(id);
 
-  const [step, setStep] = useState(1);
-
-  const [form, setForm] = useState({
-    projectName: "",
-    purchasePrice: "",
-    marketValue: "",
-    outstandingLoan: "",
-    monthlyRental: "",
-    monthlyInstalment: "",
-    renovationCost: "",
-    legalFees: "",
-    stampDuty: "",
-    furnishingCost: "",
+  const [searchParams] = useSearchParams();
+  // Links such as /property/123/edit?step=2 open a specific step.
+  const [step, setStep] = useState(() => {
+    const requested = Number(searchParams.get("step"));
+    return editing && [1, 2, 3].includes(requested) ? requested : 1;
   });
-
-  const [expenseRows, setExpenseRows] = useState([]);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [expenseRows, setExpenseRows] = useState([
+    createExpense("maintenanceFee", "", "Monthly maintenance fee"),
+  ]);
   const [otherIncome, setOtherIncome] = useState("");
   const [otherIncomeRemarks, setOtherIncomeRemarks] = useState("");
+  const [errors, setErrors] = useState({});
+  const [costsOpen, setCostsOpen] = useState(false);
 
   useEffect(() => {
     if (!editing) return;
-
     const property = getProperty(id);
     if (!property) return;
 
     setForm({
+      ...Object.fromEntries(Object.keys(EMPTY_FORM).map((key) => [key, asText(property[key])])),
       projectName: property.projectName || "",
-      purchasePrice: property.purchasePrice || "",
-      marketValue: property.marketValue || "",
-      outstandingLoan: property.outstandingLoan || "",
-      monthlyRental: property.monthlyRental || "",
-      monthlyInstalment: property.monthlyInstalment || "",
-      renovationCost: property.renovationCost || "",
-      legalFees: property.legalFees || "",
-      stampDuty: property.stampDuty || "",
-      furnishingCost: property.furnishingCost || "",
+      lender: property.lender || "",
+      cashbackSource: property.cashbackSource || "",
     });
-
     setExpenseRows(buildExpenseRows(property));
-    setOtherIncome(property.monthlyOtherIncome || "");
+    setOtherIncome(asText(property.monthlyOtherIncome));
     setOtherIncomeRemarks(property.monthlyOtherIncomeRemarks || "");
+    setCostsOpen(COST_FIELDS.some(([key]) => asText(property[key]) !== ""));
   }, [editing, id]);
 
-  function handleChange(e) {
-    setForm((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  }
-
-  function addExpense() {
-    setExpenseRows((rows) => [...rows, createExpense()]);
-  }
+  const set = (key) => (value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
 
   function updateExpense(expenseId, field, value) {
-    setExpenseRows((rows) =>
-      rows.map((row) =>
-        row.id === expenseId ? { ...row, [field]: value } : row
-      )
-    );
-  }
-
-  function removeExpense(expenseId) {
-    setExpenseRows((rows) => rows.filter((row) => row.id !== expenseId));
+    setExpenseRows((rows) => rows.map((row) => (row.id === expenseId ? { ...row, [field]: value } : row)));
   }
 
   const monthlyExpenses = useMemo(
@@ -134,13 +201,46 @@ export default function PropertyWizard() {
   );
 
   const estimatedMonthlyResult =
-    toNumber(form.monthlyRental) +
-    toNumber(otherIncome) -
-    toNumber(form.monthlyInstalment) -
-    monthlyExpenses;
+    toNumber(form.monthlyRental) + toNumber(otherIncome) - toNumber(form.monthlyInstalment) - monthlyExpenses;
 
-  function handleSubmit(e) {
-    e.preventDefault();
+  const duplicateName = useMemo(() => {
+    const name = form.projectName.trim().toLowerCase();
+    if (!name) return false;
+    return getProperties().some(
+      (p) => String(p.projectName || "").trim().toLowerCase() === name && String(p.id) !== String(id)
+    );
+  }, [form.projectName, id]);
+
+  function validateRequired() {
+    const next = {};
+    if (!form.projectName.trim()) next.projectName = "Enter a name so you can find this property.";
+    if (!(toNumber(form.purchasePrice) > 0)) next.purchasePrice = "Enter the purchase price from the SPA.";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
+  const softWarnings = [];
+  if (form.monthlyRental === "") softWarnings.push("monthly rent");
+  if (toNumber(form.outstandingLoan) > 0 && form.monthlyInstalment === "") softWarnings.push("monthly loan instalment");
+
+  function goNext() {
+    if (step === 1 && !validateRequired()) return;
+    setStep((current) => Math.min(3, current + 1));
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    // Only step 3 saves; a submit from an earlier step just moves on.
+    if (step < 3) {
+      goNext();
+      return;
+    }
+
+    if (!validateRequired()) {
+      setStep(1);
+      return;
+    }
 
     const expenseItems = expenseRows
       .filter((row) => row.amount !== "" && toNumber(row.amount) !== 0)
@@ -155,12 +255,17 @@ export default function PropertyWizard() {
       totals[field] = expenseItems
         .filter((item) => item.type === field)
         .reduce((sum, item) => sum + item.amount, 0);
-
       return totals;
     }, {});
 
+    // Remember when the interest rate was last changed, for freshness reminders.
+    const previousRate = editing ? asText(getProperty(id)?.interestRate) : "";
+    const rateChanged = form.interestRate !== "" && form.interestRate !== previousRate;
+
     const propertyData = {
       ...form,
+      ...(rateChanged ? { interestRateUpdatedAt: new Date().toISOString() } : {}),
+      projectName: form.projectName.trim(),
       monthlyOtherIncome: otherIncome,
       monthlyOtherIncomeRemarks: otherIncomeRemarks,
       monthlyExpenseItems: expenseItems,
@@ -171,69 +276,55 @@ export default function PropertyWizard() {
       updateProperty(id, propertyData);
       navigate(`/property/${id}`);
     } else {
-      saveProperty(propertyData);
-      navigate("/portfolio");
+      const newId = saveProperty(propertyData);
+      navigate(`/property/${newId}?tab=monthly&added=1`);
     }
   }
 
   const steps = [
-    { number: 1, label: "Investment" },
+    { number: 1, label: "What you bought" },
     { number: 2, label: "Financing" },
-    { number: 3, label: "Monthly Flow" },
+    { number: 3, label: "Monthly flow" },
   ];
+
+  const showSameAsOriginal =
+    form.originalLoanAmount !== "" && form.outstandingLoan === "";
 
   return (
     <div>
       <section className="page-header">
         <p className="page-subtitle">Investment Onboarding</p>
-
-        <h1 className="page-title">
-          {editing ? "Edit Investment" : "Add Investment"}
-        </h1>
-
+        <h1 className="page-title">{editing ? "Edit Investment" : "Add Investment"}</h1>
         <p className="page-subtitle">
-          A few simple steps. Aequitas will handle the calculations.
+          Only the name and purchase price are required. Everything else can be added later.
         </p>
       </section>
 
       <div className="card form-card">
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 8,
-            marginBottom: 24,
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 24 }}>
           {steps.map((item) => {
             const active = step === item.number;
             const completed = step > item.number;
-
             return (
               <button
                 key={item.number}
                 type="button"
-                onClick={() => setStep(item.number)}
+                onClick={() => {
+                  if (item.number > 1 && step === 1 && !validateRequired()) return;
+                  setStep(item.number);
+                }}
+                aria-current={active ? "step" : undefined}
                 style={{
-                  border: "none",
+                  border: active ? "1px solid var(--color-primary)" : "1px solid transparent",
                   borderRadius: 10,
-                  padding: "12px 8px",
-                  background: active || completed ? "#24334f" : "#17171f",
+                  padding: "12px 10px",
+                  background: active || completed ? "var(--color-surface-elevated)" : "var(--color-surface)",
                   color: "inherit",
                   cursor: "pointer",
                   textAlign: "left",
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 11,
-                    opacity: 0.65,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Step {item.number}
-                </div>
-
+                <div style={{ fontSize: 11, opacity: 0.65, textTransform: "uppercase" }}>Step {item.number}</div>
                 <strong>{item.label}</strong>
               </button>
             );
@@ -243,7 +334,7 @@ export default function PropertyWizard() {
         <div
           style={{
             height: 6,
-            background: "#23232d",
+            background: "var(--color-surface-elevated)",
             borderRadius: 999,
             overflow: "hidden",
             marginBottom: 26,
@@ -253,340 +344,351 @@ export default function PropertyWizard() {
             style={{
               width: `${(step / 3) * 100}%`,
               height: "100%",
-              background: "linear-gradient(90deg,#4f8cff,#68b8ff)",
+              background: "linear-gradient(90deg,var(--color-primary),var(--color-link))",
               transition: "width 180ms ease",
             }}
           />
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           {step === 1 && (
-            <section>
-              <h3 style={{ marginTop: 0 }}>Investment Information</h3>
+            <section style={{ display: "grid", gap: 14 }}>
+              <h3 style={{ margin: 0 }}>What you bought</h3>
 
-              <p className="page-subtitle">
-                Start with the property itself. You can add more detail later.
-              </p>
+              <TextField
+                label="Project name"
+                name="projectName"
+                required
+                value={form.projectName}
+                onChange={set("projectName")}
+                placeholder="e.g. The Era, Unit A-12-3"
+                error={errors.projectName}
+                hint={duplicateName ? "You already have a property with this name." : undefined}
+              />
 
-              <div style={{ display: "grid", gap: 14 }}>
-                <input
-                  name="projectName"
-                  placeholder="Project Name"
-                  value={form.projectName}
-                  onChange={handleChange}
-                />
-
-                <input
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+                <MoneyInput
+                  label="SPA purchase price"
                   name="purchasePrice"
-                  type="number"
-                  placeholder="Purchase Price (RM)"
+                  required
                   value={form.purchasePrice}
-                  onChange={handleChange}
+                  onChange={set("purchasePrice")}
+                  placeholder="e.g. 450,000"
+                  error={errors.purchasePrice}
                 />
-
-                <input
-                  name="marketValue"
-                  type="number"
-                  placeholder="Current Market Value (RM)"
-                  value={form.marketValue}
-                  onChange={handleChange}
+                <TextField
+                  label="Purchase date (SPA date)"
+                  name="purchaseDate"
+                  type="date"
+                  value={form.purchaseDate}
+                  onChange={set("purchaseDate")}
+                  hint="Used for RPGT holding period and your timeline."
                 />
               </div>
+
+              <MoneyInput
+                label="Current market value"
+                name="marketValue"
+                value={form.marketValue}
+                onChange={set("marketValue")}
+                placeholder="e.g. 480,000"
+                hint="Leave empty if you bought recently or don't have a valuation yet."
+              />
+
+              <Panel title="Purchase discount or rebate">
+                <Note>
+                  Optional. A developer discount or rebate deducted from the SPA price. Leave empty if the SPA price
+                  above is already the price after the rebate, so it isn&apos;t counted twice.
+                </Note>
+                <MoneyInput
+                  label="Discount / rebate"
+                  name="purchaseDiscount"
+                  value={form.purchaseDiscount}
+                  onChange={set("purchaseDiscount")}
+                  placeholder="e.g. 20,000"
+                />
+              </Panel>
+
+              <details open={costsOpen} onToggle={(event) => setCostsOpen(event.currentTarget.open)}>
+                <summary style={{ cursor: "pointer", fontWeight: 700 }}>Purchase costs (optional)</summary>
+                <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
+                  <Note>
+                    Used for the Investment Breakdown: what the property cost and how much of your own money is in
+                    it. Enter 0 for anything that doesn&apos;t apply.
+                  </Note>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+                    {COST_FIELDS.map(([key, label, placeholder]) => (
+                      <MoneyInput
+                        key={key}
+                        name={key}
+                        label={label}
+                        value={form[key]}
+                        onChange={set(key)}
+                        placeholder={placeholder}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </details>
             </section>
           )}
 
           {step === 2 && (
-            <section>
-              <h3 style={{ marginTop: 0 }}>Financing</h3>
+            <section style={{ display: "grid", gap: 14 }}>
+              <h3 style={{ margin: 0 }}>Financing</h3>
+              <Note>Leave this step empty if the property was bought without a loan.</Note>
 
-              <p className="page-subtitle">
-                Just tell Aequitas what you still owe and what you normally pay
-                the bank each month.
-              </p>
-
-              <div style={{ display: "grid", gap: 14 }}>
-                <input
-                  name="outstandingLoan"
-                  type="number"
-                  placeholder="Outstanding Loan (RM)"
-                  value={form.outstandingLoan}
-                  onChange={handleChange}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+                <MoneyInput
+                  label="Original loan amount"
+                  name="originalLoanAmount"
+                  value={form.originalLoanAmount}
+                  onChange={set("originalLoanAmount")}
+                  placeholder="e.g. 405,000"
+                  hint="As approved in the letter of offer."
                 />
+                <div style={{ display: "grid", gap: 6 }}>
+                  <MoneyInput
+                    label="Outstanding loan today"
+                    name="outstandingLoan"
+                    value={form.outstandingLoan}
+                    onChange={set("outstandingLoan")}
+                    placeholder="e.g. 398,500"
+                    hint="From your latest loan statement."
+                  />
+                  {showSameAsOriginal && (
+                    <button
+                      type="button"
+                      onClick={() => set("outstandingLoan")(form.originalLoanAmount)}
+                      style={{
+                        justifySelf: "start",
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--color-link)",
+                        cursor: "pointer",
+                        padding: 0,
+                        fontSize: 13,
+                      }}
+                    >
+                      Just bought? Use the original loan amount
+                    </button>
+                  )}
+                </div>
+              </div>
 
-                <input
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+                <MoneyInput
+                  label="Monthly instalment"
                   name="monthlyInstalment"
-                  type="number"
-                  placeholder="Monthly Loan Payment (RM)"
                   value={form.monthlyInstalment}
-                  onChange={handleChange}
+                  onChange={set("monthlyInstalment")}
+                  placeholder="e.g. 1,969"
+                />
+                <MoneyInput
+                  label="Interest rate (% a year)"
+                  name="interestRate"
+                  prefix="%"
+                  value={form.interestRate}
+                  onChange={set("interestRate")}
+                  placeholder="e.g. 4.15"
+                  hint="Recommended: enables loan checks and real projections."
                 />
               </div>
 
-              <div
-                style={{
-                  marginTop: 18,
-                  padding: 14,
-                  borderRadius: 10,
-                  background: "#111827",
-                  border: "1px solid #273244",
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                }}
-              >
-                You do not need to enter interest calculations here. Aequitas
-                can use the loan information for later analysis.
-              </div>
+              <TextField
+                label="Bank / lender (optional)"
+                name="lender"
+                value={form.lender}
+                onChange={set("lender")}
+                placeholder="e.g. Maybank"
+              />
+
+              <Panel title="Cashback received">
+                <Note>
+                  Optional. Money paid back to you by the developer or the bank. It reduces the cash you have in the
+                  property, not the purchase price. If the rebate was deducted from the price instead, record it as a
+                  purchase discount in step 1.
+                </Note>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
+                  <MoneyInput
+                    label="Cashback received"
+                    name="loanCashback"
+                    value={form.loanCashback}
+                    onChange={set("loanCashback")}
+                    placeholder="e.g. 18,000"
+                  />
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>Cashback from</span>
+                    <select
+                      name="cashbackSource"
+                      value={form.cashbackSource}
+                      onChange={(event) => set("cashbackSource")(event.target.value)}
+                    >
+                      <option value="">Not specified</option>
+                      <option value="developer">Developer</option>
+                      <option value="bank">Bank</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                </div>
+              </Panel>
             </section>
           )}
 
           {step === 3 && (
-            <section>
-              <h3 style={{ marginTop: 0 }}>Monthly Money Flow</h3>
+            <section style={{ display: "grid", gap: 14 }}>
+              <h3 style={{ margin: 0 }}>Monthly flow</h3>
+              <Note>Your normal monthly amounts. Actual months are recorded later in Monthly Check-in.</Note>
 
-              <p className="page-subtitle">
-                Only enter what actually applies. Leave everything else alone.
-              </p>
-
-              <div
-                style={{
-                  padding: 16,
-                  borderRadius: 12,
-                  background: "#111827",
-                  border: "1px solid #273244",
-                }}
-              >
-                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>
-                  MONEY IN
-                </div>
-
-                <div style={{ display: "grid", gap: 10 }}>
-                  <input
-                    name="monthlyRental"
-                    type="number"
-                    placeholder="+ Rental received (RM)"
-                    value={form.monthlyRental}
-                    onChange={handleChange}
+              <Panel>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>MONEY IN</div>
+                <MoneyInput
+                  label="Monthly rent"
+                  name="monthlyRental"
+                  value={form.monthlyRental}
+                  onChange={set("monthlyRental")}
+                  placeholder="e.g. 2,300"
+                />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+                  <MoneyInput
+                    label="Other monthly income (optional)"
+                    value={otherIncome}
+                    onChange={setOtherIncome}
+                    placeholder="e.g. 150"
                   />
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 10,
-                    }}
-                  >
-                    <input
-                      type="number"
-                      placeholder="+ Other income (optional)"
-                      value={otherIncome}
-                      onChange={(e) => setOtherIncome(e.target.value)}
-                    />
-
-                    <input
-                      placeholder="What was it for? (optional)"
-                      value={otherIncomeRemarks}
-                      onChange={(e) =>
-                        setOtherIncomeRemarks(e.target.value)
-                      }
-                    />
-                  </div>
+                  <TextField
+                    label="What is it for?"
+                    value={otherIncomeRemarks}
+                    onChange={setOtherIncomeRemarks}
+                    placeholder="e.g. car park rental"
+                  />
                 </div>
 
+                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 8 }}>MONEY OUT</div>
                 <div
                   style={{
-                    fontSize: 12,
-                    opacity: 0.7,
-                    margin: "20px 0 10px",
+                    padding: 12,
+                    borderRadius: 10,
+                    background: "var(--color-surface-elevated)",
                   }}
                 >
-                  MONEY OUT
+                  <strong>− RM {toNumber(form.monthlyInstalment).toLocaleString("en-MY")}</strong>
+                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 3 }}>Loan instalment (from step 2)</div>
                 </div>
 
-                <div style={{ display: "grid", gap: 12 }}>
+                {expenseRows.map((row) => (
                   <div
+                    key={row.id}
                     style={{
                       padding: 12,
                       borderRadius: 10,
-                      background: "#171e2a",
+                      background: "var(--color-surface-elevated)",
+                      display: "grid",
+                      gap: 10,
                     }}
                   >
-                    <strong>
-                      − RM {toNumber(form.monthlyInstalment).toLocaleString()}
-                    </strong>
-
                     <div
                       style={{
-                        fontSize: 12,
-                        opacity: 0.7,
-                        marginTop: 3,
-                      }}
-                    >
-                      Loan payment
-                    </div>
-                  </div>
-
-                  {expenseRows.map((row) => (
-                    <div
-                      key={row.id}
-                      style={{
-                        padding: 12,
-                        borderRadius: 10,
-                        background: "#171e2a",
                         display: "grid",
+                        gridTemplateColumns: "minmax(140px,1fr) minmax(130px,170px) auto",
                         gap: 10,
+                        alignItems: "end",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 130px auto",
-                          gap: 10,
-                          alignItems: "center",
-                        }}
-                      >
-                        <select
-                          value={row.type}
-                          onChange={(e) =>
-                            updateExpense(row.id, "type", e.target.value)
-                          }
-                        >
+                      <label style={{ display: "grid", gap: 6 }}>
+                        <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>Expense</span>
+                        <select value={row.type} onChange={(e) => updateExpense(row.id, "type", e.target.value)}>
                           {EXPENSE_TYPES.map((type) => (
                             <option key={type.value} value={type.value}>
                               {type.label}
                             </option>
                           ))}
                         </select>
-
-                        <input
-                          type="number"
-                          placeholder="Amount (RM)"
-                          value={row.amount}
-                          onChange={(e) =>
-                            updateExpense(row.id, "amount", e.target.value)
-                          }
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => removeExpense(row.id)}
-                          style={{
-                            border: "none",
-                            background: "transparent",
-                            color: "inherit",
-                            cursor: "pointer",
-                            padding: "8px 4px",
-                          }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-
-                      <input
-                        placeholder="Remarks — e.g. monthly maintenance fee"
-                        value={row.remarks}
-                        onChange={(e) =>
-                          updateExpense(row.id, "remarks", e.target.value)
-                        }
+                      </label>
+                      <MoneyInput
+                        label="Monthly amount"
+                        value={row.amount}
+                        onChange={(value) => updateExpense(row.id, "amount", value)}
+                        placeholder="e.g. 273.70"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setExpenseRows((rows) => rows.filter((r) => r.id !== row.id))}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          color: "inherit",
+                          cursor: "pointer",
+                          padding: "12px 4px",
+                        }}
+                      >
+                        Remove
+                      </button>
                     </div>
-                  ))}
-                </div>
+                    <input
+                      placeholder="Remarks (optional), e.g. includes sinking fund"
+                      value={row.remarks}
+                      onChange={(e) => updateExpense(row.id, "remarks", e.target.value)}
+                    />
+                  </div>
+                ))}
 
                 <button
                   type="button"
-                  onClick={addExpense}
+                  onClick={() => setExpenseRows((rows) => [...rows, createExpense()])}
                   style={{
                     width: "100%",
                     padding: 12,
-                    marginTop: 12,
                     borderRadius: 10,
-                    border: "1px dashed #53627a",
+                    border: "1px dashed var(--color-border-strong)",
                     background: "transparent",
                     color: "inherit",
                     cursor: "pointer",
                   }}
                 >
-                  − Add expense
+                  + Add expense
                 </button>
 
                 <div
                   style={{
-                    marginTop: 16,
                     paddingTop: 14,
-                    borderTop: "1px solid #273244",
+                    borderTop: "1px solid var(--color-border-strong)",
                     display: "flex",
                     justifyContent: "space-between",
                     gap: 16,
                   }}
                 >
-                  <span>Estimated monthly result</span>
-
-                  <strong>
-                    RM {Math.round(estimatedMonthlyResult).toLocaleString()}
+                  <span>Estimated monthly cashflow</span>
+                  <strong
+                    style={{
+                      color: estimatedMonthlyResult >= 0 ? "var(--color-success)" : "var(--color-negative)",
+                    }}
+                  >
+                    RM {Math.round(estimatedMonthlyResult).toLocaleString("en-MY")}
                   </strong>
                 </div>
-              </div>
+              </Panel>
 
-              <p className="page-subtitle" style={{ marginTop: 10 }}>
-                These are normal monthly amounts. Actual month-by-month changes
-                can be recorded later in Monthly Check-in.
-              </p>
-
-              <details style={{ marginTop: 20 }}>
-                <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-                  Optional acquisition costs
-                </summary>
-
-                <p className="page-subtitle" style={{ marginTop: 10 }}>
-                  Only use these if you want Aequitas to understand the
-                  property's original acquisition cost.
-                </p>
-
-                <div style={{ display: "grid", gap: 14, marginTop: 14 }}>
-                  <input
-                    name="renovationCost"
-                    type="number"
-                    placeholder="Renovation Cost (RM)"
-                    value={form.renovationCost}
-                    onChange={handleChange}
-                  />
-
-                  <input
-                    name="legalFees"
-                    type="number"
-                    placeholder="Legal Fees (RM)"
-                    value={form.legalFees}
-                    onChange={handleChange}
-                  />
-
-                  <input
-                    name="stampDuty"
-                    type="number"
-                    placeholder="Stamp Duty (RM)"
-                    value={form.stampDuty}
-                    onChange={handleChange}
-                  />
-
-                  <input
-                    name="furnishingCost"
-                    type="number"
-                    placeholder="Furnishing Cost (RM)"
-                    value={form.furnishingCost}
-                    onChange={handleChange}
-                  />
+              {softWarnings.length > 0 && (
+                <div
+                  role="status"
+                  style={{
+                    padding: 12,
+                    borderRadius: 10,
+                    border: "1px solid var(--color-warning-border)",
+                    background: "var(--color-warning-soft)",
+                    fontSize: 13,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  No {softWarnings.join(" or ")} entered yet. You can save now and add{" "}
+                  {softWarnings.length === 1 ? "it" : "them"} later, but cashflow will be incomplete until you do.
                 </div>
-              </details>
+              )}
             </section>
           )}
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              marginTop: 28,
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 28 }}>
             <button
               type="button"
               onClick={() => setStep((current) => Math.max(1, current - 1))}
@@ -594,7 +696,7 @@ export default function PropertyWizard() {
               style={{
                 padding: "12px 18px",
                 borderRadius: 10,
-                border: "1px solid #39465b",
+                border: "1px solid var(--color-border-strong)",
                 background: "transparent",
                 color: "inherit",
                 cursor: step === 1 ? "default" : "pointer",
@@ -604,16 +706,17 @@ export default function PropertyWizard() {
               Back
             </button>
 
+            {/*
+              Distinct keys matter: without them React reuses the same
+              <button> and switches its type to "submit" during the click on
+              step 2, which submits the form immediately and skips step 3.
+            */}
             {step < 3 ? (
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => setStep((current) => Math.min(3, current + 1))}
-              >
+              <button key="continue" type="button" className="primary-button" onClick={goNext}>
                 Continue
               </button>
             ) : (
-              <button type="submit" className="primary-button">
+              <button key="save" type="submit" className="primary-button">
                 {editing ? "Save Changes" : "Save Investment"}
               </button>
             )}

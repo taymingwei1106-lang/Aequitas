@@ -48,7 +48,7 @@ export default function PropertySelector({
                     style={{
                         marginTop: 8,
                         fontSize: "0.9rem",
-                        color: "#6b7280",
+                        color: "var(--color-text-muted)",
                     }}
                 >
                     Property selected. Calculator values can now be

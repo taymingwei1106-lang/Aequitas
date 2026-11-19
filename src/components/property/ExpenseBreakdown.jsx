@@ -81,7 +81,7 @@ export default function ExpenseBreakdown({ property }) {
         style={{
           margin: "20px 0",
           border: "none",
-          borderTop: "1px solid #303544",
+          borderTop: "1px solid var(--color-border-strong)",
         }}
       />
 

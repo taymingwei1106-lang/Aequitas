@@ -218,10 +218,10 @@ function simulateLoan(principal, annualRate, payment, extra = 0, lumpSum = 0) {
 }
 
 const card = {
-  border: "1px solid #252b3d",
+  border: "1px solid var(--color-border-strong)",
   borderRadius: 18,
   padding: 24,
-  background: "#111119",
+  background: "var(--color-surface-sunken)",
 };
 
 const input = {
@@ -229,9 +229,9 @@ const input = {
   boxSizing: "border-box",
   padding: "13px 15px",
   borderRadius: 12,
-  border: "1px solid #292e3d",
-  background: "#0d0d13",
-  color: "#fff",
+  border: "1px solid var(--color-border-strong)",
+  background: "var(--color-surface-sunken)",
+  color: "var(--color-text)",
   fontSize: 15,
   marginTop: 7,
 };
@@ -242,16 +242,16 @@ function Metric({ label, value, note }) {
       style={{
         padding: 15,
         borderRadius: 14,
-        background: "#171722",
-        border: "1px solid #252936",
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-border-strong)",
       }}
     >
-      <div style={{ color: "#9295a6", fontSize: 12, marginBottom: 6 }}>
+      <div style={{ color: "var(--color-text-secondary)", fontSize: 12, marginBottom: 6 }}>
         {label}
       </div>
       <div style={{ fontSize: 20, fontWeight: 700 }}>{value}</div>
       {note && (
-        <div style={{ color: "#777b8c", fontSize: 12, marginTop: 5 }}>
+        <div style={{ color: "var(--color-text-muted)", fontSize: 12, marginTop: 5 }}>
           {note}
         </div>
       )}
@@ -268,16 +268,16 @@ function ModeCard({ active, icon, title, description, onClick }) {
         borderRadius: 16,
         padding: 18,
         minHeight: 122,
-        border: active ? "1px solid #596b92" : "1px solid #252936",
-        background: active ? "#181c28" : "#111119",
-        color: "#fff",
+        border: active ? "1px solid #596b92" : "1px solid var(--color-border-strong)",
+        background: active ? "var(--color-surface)" : "var(--color-surface-sunken)",
+        color: "var(--color-text)",
         cursor: "pointer",
         boxShadow: active ? "0 0 0 1px rgba(89,107,146,.12)" : "none",
       }}
     >
       <div style={{ fontSize: 21, marginBottom: 10 }}>{icon}</div>
       <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
-      <div style={{ color: "#898d9d", fontSize: 12, lineHeight: 1.45, marginTop: 5 }}>
+      <div style={{ color: "var(--color-text-muted)", fontSize: 12, lineHeight: 1.45, marginTop: 5 }}>
         {description}
       </div>
     </button>
@@ -286,7 +286,7 @@ function ModeCard({ active, icon, title, description, onClick }) {
 
 function Field({ label, value, onChange, step = "1", min }) {
   return (
-    <label style={{ display: "block", color: "#d9dae0", fontSize: 13, fontWeight: 600 }}>
+    <label style={{ display: "block", color: "var(--color-text)", fontSize: 13, fontWeight: 600 }}>
       {label}
       <input
         type="number"
@@ -375,13 +375,13 @@ function ScenarioSummary({
         marginTop: 22,
         padding: 20,
         borderRadius: 18,
-        border: "1px solid #2d3b60",
-        background: "#111119",
+        border: "1px solid var(--color-border-strong)",
+        background: "var(--color-surface-sunken)",
       }}
     >
       <div
         style={{
-          color: "#788096",
+          color: "var(--color-text-muted)",
           fontSize: 11,
           letterSpacing: 1,
         }}
@@ -400,7 +400,7 @@ function ScenarioSummary({
 
       <p
         style={{
-          color: "#9296a7",
+          color: "var(--color-text-secondary)",
           margin: 0,
           fontSize: 13,
         }}
@@ -415,8 +415,8 @@ function ScenarioSummary({
             marginTop: 16,
             padding: 14,
             borderRadius: 12,
-            background: "#15151e",
-            color: "#858998",
+            background: "var(--color-surface-sunken)",
+            color: "var(--color-text-muted)",
             fontSize: 13,
           }}
         >
@@ -471,13 +471,13 @@ function ScenarioSummary({
               marginTop: 15,
               padding: 14,
               borderRadius: 12,
-              background: "#15151e",
-              color: "#858998",
+              background: "var(--color-surface-sunken)",
+              color: "var(--color-text-muted)",
               fontSize: 12,
               lineHeight: 1.55,
             }}
           >
-            <strong style={{ color: "#d5d6dc" }}>
+            <strong style={{ color: "var(--color-text)" }}>
               Assumptions changed:
             </strong>{" "}
             {assumptions.join(" · ")}
@@ -486,7 +486,7 @@ function ScenarioSummary({
           <div
             style={{
               marginTop: 10,
-              color: "#737789",
+              color: "var(--color-text-muted)",
               fontSize: 11,
               lineHeight: 1.5,
             }}
@@ -589,6 +589,11 @@ export default function DecisionLab() {
     } catch {}
 
     setSalePrice(num(property.marketValue) || num(property.purchasePrice));
+
+    // Start from the property's recorded interest rate when there is one.
+    if (num(property.interestRate) > 0) {
+      setLoanRate(num(property.interestRate));
+    }
   }, [property?.__decisionId]);
 
   const data = useMemo(() => {
@@ -876,9 +881,9 @@ export default function DecisionLab() {
 
   if (!normalized.length) {
     return (
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: 32, color: "#fff" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: 32, color: "var(--color-text)" }}>
         <h1>Decision Lab</h1>
-        <p style={{ color: "#a7a9b8" }}>
+        <p style={{ color: "var(--color-text-secondary)" }}>
           Aequitas could not find the saved properties.
         </p>
         <button onClick={() => navigate("/portfolio")}>Back to Portfolio</button>
@@ -894,7 +899,7 @@ export default function DecisionLab() {
         maxWidth: 1100,
         margin: "0 auto",
         padding: "28px 30px 70px",
-        color: "#fff",
+        color: "var(--color-text)",
       }}
     >
       <button
@@ -902,7 +907,7 @@ export default function DecisionLab() {
         style={{
           background: "transparent",
           border: 0,
-          color: "#9296a7",
+          color: "var(--color-text-secondary)",
           cursor: "pointer",
           padding: 0,
           marginBottom: 18,
@@ -921,13 +926,13 @@ export default function DecisionLab() {
         }}
       >
         <div>
-          <div style={{ color: "#777c90", fontSize: 12, letterSpacing: 1.1 }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: 12, letterSpacing: 1.1 }}>
             DECISION LAB
           </div>
           <h1 style={{ margin: "7px 0 6px", fontSize: 32 }}>
             Explore this investment
           </h1>
-          <p style={{ color: "#969aaa", margin: 0, maxWidth: 620 }}>
+          <p style={{ color: "var(--color-text-secondary)", margin: 0, maxWidth: 620 }}>
             Aequitas already knows the property. Choose what you want to
             understand, then change assumptions only when you need to.
           </p>
@@ -938,11 +943,11 @@ export default function DecisionLab() {
             minWidth: 230,
             padding: "12px 14px",
             borderRadius: 14,
-            background: "#15151e",
-            border: "1px solid #252936",
+            background: "var(--color-surface-sunken)",
+            border: "1px solid var(--color-border-strong)",
           }}
         >
-          <div style={{ color: "#777c8e", fontSize: 11, marginBottom: 5 }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: 11, marginBottom: 5 }}>
             CURRENT PROPERTY
           </div>
           <div style={{ position: "relative" }}>
@@ -956,12 +961,12 @@ export default function DecisionLab() {
                 justifyContent: "space-between",
                 gap: 12,
                 padding: "11px 12px",
-                background: "#171b26",
+                background: "var(--color-surface)",
                 border: propertyMenuOpen
                   ? "1px solid #53698f"
-                  : "1px solid #292e3d",
+                  : "1px solid var(--color-border-strong)",
                 borderRadius: 12,
-                color: "#fff",
+                color: "var(--color-text)",
                 fontSize: 15,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -976,7 +981,7 @@ export default function DecisionLab() {
                 style={{
                   fontSize: 18,
                   lineHeight: 1,
-                  color: "#d4d7df",
+                  color: "var(--color-text)",
                   transform: propertyMenuOpen ? "rotate(180deg)" : "none",
                   transition: "transform .15s ease",
                 }}
@@ -995,8 +1000,8 @@ export default function DecisionLab() {
                   right: 0,
                   padding: 5,
                   borderRadius: 12,
-                  background: "#151923",
-                  border: "1px solid #30384a",
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border-strong)",
                   boxShadow: "0 16px 35px rgba(0,0,0,.35)",
                 }}
               >
@@ -1022,8 +1027,8 @@ export default function DecisionLab() {
                         padding: "10px 11px",
                         border: 0,
                         borderRadius: 8,
-                        background: active ? "#27334a" : "transparent",
-                        color: active ? "#fff" : "#c6c9d2",
+                        background: active ? "var(--color-surface-elevated)" : "transparent",
+                        color: active ? "var(--color-text)" : "var(--color-text-secondary)",
                         textAlign: "left",
                         fontSize: 14,
                         cursor: "pointer",
@@ -1078,7 +1083,7 @@ export default function DecisionLab() {
       </div>
 
       <section style={{ ...card, marginTop: 22 }}>
-        <div style={{ color: "#788096", fontSize: 11, letterSpacing: 1 }}>
+        <div style={{ color: "var(--color-text-muted)", fontSize: 11, letterSpacing: 1 }}>
           {info.eyebrow}
         </div>
         <div
@@ -1094,7 +1099,7 @@ export default function DecisionLab() {
             <h2 style={{ margin: "8px 0 5px", fontSize: 25 }}>
               {info.title}
             </h2>
-            <p style={{ color: "#9296a7", margin: 0 }}>
+            <p style={{ color: "var(--color-text-secondary)", margin: 0 }}>
               {info.description}
             </p>
           </div>
@@ -1104,8 +1109,8 @@ export default function DecisionLab() {
               onClick={resetMode}
               style={{
                 background: "transparent",
-                color: "#9296a7",
-                border: "1px solid #292e3d",
+                color: "var(--color-text-secondary)",
+                border: "1px solid var(--color-border-strong)",
                 borderRadius: 10,
                 padding: "8px 12px",
                 cursor: "pointer",
@@ -1167,13 +1172,13 @@ export default function DecisionLab() {
                 marginTop: 18,
                 padding: 15,
                 borderRadius: 13,
-                background: "#15151e",
-                color: "#888c9d",
+                background: "var(--color-surface-sunken)",
+                color: "var(--color-text-muted)",
                 fontSize: 13,
                 lineHeight: 1.55,
               }}
             >
-              <strong style={{ color: "#d5d6dc" }}>
+              <strong style={{ color: "var(--color-text)" }}>
                 History:
               </strong>{" "}
               {data.checkins.length} monthly check-in
@@ -1218,13 +1223,13 @@ export default function DecisionLab() {
                 marginTop: 14,
                 padding: "11px 13px",
                 borderRadius: 11,
-                background: "#15151e",
-                color: "#858998",
+                background: "var(--color-surface-sunken)",
+                color: "var(--color-text-muted)",
                 fontSize: 12,
                 lineHeight: 1.5,
               }}
             >
-              <strong style={{ color: "#d3d4da" }}>
+              <strong style={{ color: "var(--color-text)" }}>
                 Shared assumption:
               </strong>{" "}
               Loan & Financing inputs are used here automatically. For example,
@@ -1338,8 +1343,8 @@ export default function DecisionLab() {
                 marginTop: 18,
                 padding: 14,
                 borderRadius: 12,
-                background: "#15151e",
-                color: "#858998",
+                background: "var(--color-surface-sunken)",
+                color: "var(--color-text-muted)",
                 fontSize: 12,
                 lineHeight: 1.5,
               }}
@@ -1373,7 +1378,7 @@ export default function DecisionLab() {
                 >
                   <span
                     style={{
-                      color: "#d9dae0",
+                      color: "var(--color-text)",
                       fontSize: 13,
                       fontWeight: 600,
                     }}
@@ -1384,7 +1389,7 @@ export default function DecisionLab() {
                   <div
                     style={{
                       display: "flex",
-                      border: "1px solid #292e3d",
+                      border: "1px solid var(--color-border-strong)",
                       borderRadius: 9,
                       overflow: "hidden",
                     }}
@@ -1397,12 +1402,12 @@ export default function DecisionLab() {
                         padding: "5px 9px",
                         background:
                           rentChangeMode === "percent"
-                            ? "#252d40"
+                            ? "var(--color-surface-elevated)"
                             : "transparent",
                         color:
                           rentChangeMode === "percent"
-                            ? "#fff"
-                            : "#858998",
+                            ? "var(--color-text)"
+                            : "var(--color-text-muted)",
                         cursor: "pointer",
                         fontSize: 11,
                       }}
@@ -1417,12 +1422,12 @@ export default function DecisionLab() {
                         padding: "5px 9px",
                         background:
                           rentChangeMode === "fixed"
-                            ? "#252d40"
+                            ? "var(--color-surface-elevated)"
                             : "transparent",
                         color:
                           rentChangeMode === "fixed"
-                            ? "#fff"
-                            : "#858998",
+                            ? "var(--color-text)"
+                            : "var(--color-text-muted)",
                         cursor: "pointer",
                         fontSize: 11,
                       }}
@@ -1442,7 +1447,7 @@ export default function DecisionLab() {
 
                 <div
                   style={{
-                    color: "#777b8c",
+                    color: "var(--color-text-muted)",
                     fontSize: 11,
                     marginTop: 5,
                   }}
@@ -1464,7 +1469,7 @@ export default function DecisionLab() {
                 >
                   <span
                     style={{
-                      color: "#d9dae0",
+                      color: "var(--color-text)",
                       fontSize: 13,
                       fontWeight: 600,
                     }}
@@ -1475,7 +1480,7 @@ export default function DecisionLab() {
                   <div
                     style={{
                       display: "flex",
-                      border: "1px solid #292e3d",
+                      border: "1px solid var(--color-border-strong)",
                       borderRadius: 9,
                       overflow: "hidden",
                     }}
@@ -1488,12 +1493,12 @@ export default function DecisionLab() {
                         padding: "5px 9px",
                         background:
                           expenseChangeMode === "percent"
-                            ? "#252d40"
+                            ? "var(--color-surface-elevated)"
                             : "transparent",
                         color:
                           expenseChangeMode === "percent"
-                            ? "#fff"
-                            : "#858998",
+                            ? "var(--color-text)"
+                            : "var(--color-text-muted)",
                         cursor: "pointer",
                         fontSize: 11,
                       }}
@@ -1508,12 +1513,12 @@ export default function DecisionLab() {
                         padding: "5px 9px",
                         background:
                           expenseChangeMode === "fixed"
-                            ? "#252d40"
+                            ? "var(--color-surface-elevated)"
                             : "transparent",
                         color:
                           expenseChangeMode === "fixed"
-                            ? "#fff"
-                            : "#858998",
+                            ? "var(--color-text)"
+                            : "var(--color-text-muted)",
                         cursor: "pointer",
                         fontSize: 11,
                       }}
@@ -1533,7 +1538,7 @@ export default function DecisionLab() {
 
                 <div
                   style={{
-                    color: "#777b8c",
+                    color: "var(--color-text-muted)",
                     fontSize: 11,
                     marginTop: 5,
                   }}
@@ -1555,7 +1560,7 @@ export default function DecisionLab() {
                 >
                   <span
                     style={{
-                      color: "#d9dae0",
+                      color: "var(--color-text)",
                       fontSize: 13,
                       fontWeight: 600,
                     }}
@@ -1566,7 +1571,7 @@ export default function DecisionLab() {
                   <div
                     style={{
                       display: "flex",
-                      border: "1px solid #292e3d",
+                      border: "1px solid var(--color-border-strong)",
                       borderRadius: 9,
                       overflow: "hidden",
                     }}
@@ -1579,12 +1584,12 @@ export default function DecisionLab() {
                         padding: "5px 9px",
                         background:
                           rateChangeMode === "points"
-                            ? "#252d40"
+                            ? "var(--color-surface-elevated)"
                             : "transparent",
                         color:
                           rateChangeMode === "points"
-                            ? "#fff"
-                            : "#858998",
+                            ? "var(--color-text)"
+                            : "var(--color-text-muted)",
                         cursor: "pointer",
                         fontSize: 11,
                       }}
@@ -1599,12 +1604,12 @@ export default function DecisionLab() {
                         padding: "5px 9px",
                         background:
                           rateChangeMode === "fixed"
-                            ? "#252d40"
+                            ? "var(--color-surface-elevated)"
                             : "transparent",
                         color:
                           rateChangeMode === "fixed"
-                            ? "#fff"
-                            : "#858998",
+                            ? "var(--color-text)"
+                            : "var(--color-text-muted)",
                         cursor: "pointer",
                         fontSize: 11,
                       }}
@@ -1624,7 +1629,7 @@ export default function DecisionLab() {
 
                 <div
                   style={{
-                    color: "#777b8c",
+                    color: "var(--color-text-muted)",
                     fontSize: 11,
                     marginTop: 5,
                   }}
@@ -1646,7 +1651,7 @@ export default function DecisionLab() {
                 >
                   <span
                     style={{
-                      color: "#d9dae0",
+                      color: "var(--color-text)",
                       fontSize: 13,
                       fontWeight: 600,
                     }}
@@ -1657,7 +1662,7 @@ export default function DecisionLab() {
                   <div
                     style={{
                       display: "flex",
-                      border: "1px solid #292e3d",
+                      border: "1px solid var(--color-border-strong)",
                       borderRadius: 9,
                       overflow: "hidden",
                     }}
@@ -1670,12 +1675,12 @@ export default function DecisionLab() {
                         padding: "5px 9px",
                         background:
                           valueChangeMode === "percent"
-                            ? "#252d40"
+                            ? "var(--color-surface-elevated)"
                             : "transparent",
                         color:
                           valueChangeMode === "percent"
-                            ? "#fff"
-                            : "#858998",
+                            ? "var(--color-text)"
+                            : "var(--color-text-muted)",
                         cursor: "pointer",
                         fontSize: 11,
                       }}
@@ -1690,12 +1695,12 @@ export default function DecisionLab() {
                         padding: "5px 9px",
                         background:
                           valueChangeMode === "fixed"
-                            ? "#252d40"
+                            ? "var(--color-surface-elevated)"
                             : "transparent",
                         color:
                           valueChangeMode === "fixed"
-                            ? "#fff"
-                            : "#858998",
+                            ? "var(--color-text)"
+                            : "var(--color-text-muted)",
                         cursor: "pointer",
                         fontSize: 11,
                       }}
@@ -1715,7 +1720,7 @@ export default function DecisionLab() {
 
                 <div
                   style={{
-                    color: "#777b8c",
+                    color: "var(--color-text-muted)",
                     fontSize: 11,
                     marginTop: 5,
                   }}
@@ -1788,36 +1793,36 @@ export default function DecisionLab() {
                 marginTop: 18,
                 padding: 15,
                 borderRadius: 13,
-                background: "#15151e",
-                color: "#9296a7",
+                background: "var(--color-surface-sunken)",
+                color: "var(--color-text-secondary)",
                 fontSize: 13,
                 lineHeight: 1.55,
               }}
             >
-              <strong style={{ color: "#d5d6dc" }}>
+              <strong style={{ color: "var(--color-text)" }}>
                 What changed?
               </strong>{" "}
               Monthly cashflow moves from{" "}
-              <strong style={{ color: "#fff" }}>
+              <strong style={{ color: "var(--color-text)" }}>
                 {money(data.cashflow)}
               </strong>{" "}
               to{" "}
-              <strong style={{ color: "#fff" }}>
+              <strong style={{ color: "var(--color-text)" }}>
                 {money(whatIf.cashflow)}
               </strong>
               . Loan outflow is{" "}
-              <strong style={{ color: "#fff" }}>
+              <strong style={{ color: "var(--color-text)" }}>
                 {money(whatIf.totalLoanPayment)}
               </strong>
               {whatIf.extraRepayment > 0
                 ? `, including ${money(whatIf.extraRepayment)} extra repayment`
                 : ""}.
               The loan balance is projected for the next 12 months:
-              <strong style={{ color: "#fff" }}>
+              <strong style={{ color: "var(--color-text)" }}>
                 {" "}{money(whatIf.scenarioLoanBalanceAfter12Months)}
               </strong>{" "}
               under this scenario versus{" "}
-              <strong style={{ color: "#fff" }}>
+              <strong style={{ color: "var(--color-text)" }}>
                 {money(whatIf.baselineLoanBalanceAfter12Months)}
               </strong>{" "}
               on the current-payment path. Projected equity then uses the
@@ -1830,7 +1835,7 @@ export default function DecisionLab() {
           <>
             <p
               style={{
-                color: "#9296a7",
+                color: "var(--color-text-secondary)",
                 marginTop: 22,
                 marginBottom: 7,
                 fontSize: 13,
@@ -1876,8 +1881,8 @@ export default function DecisionLab() {
                 marginTop: 18,
                 padding: 15,
                 borderRadius: 13,
-                background: "#15151e",
-                color: "#858998",
+                background: "var(--color-surface-sunken)",
+                color: "var(--color-text-muted)",
                 fontSize: 12,
                 lineHeight: 1.5,
               }}
@@ -1910,14 +1915,14 @@ export default function DecisionLab() {
         style={{
           padding: 17,
           borderRadius: 14,
-          background: "#101017",
-          border: "1px solid #222735",
-          color: "#858998",
+          background: "var(--color-surface-sunken)",
+          border: "1px solid var(--color-border-strong)",
+          color: "var(--color-text-muted)",
           fontSize: 12,
           lineHeight: 1.55,
         }}
       >
-        <strong style={{ color: "#d3d4da" }}>
+        <strong style={{ color: "var(--color-text)" }}>
           Aequitas approach:
         </strong>{" "}
         understand the current position first, investigate scenarios second,

@@ -65,7 +65,7 @@ export default function CalculatorSection({
         <div
           style={{
             marginTop: 24,
-            borderTop: "1px solid rgba(255,255,255,.08)",
+            borderTop: "1px solid var(--color-border)",
             paddingTop: 24,
           }}
         >

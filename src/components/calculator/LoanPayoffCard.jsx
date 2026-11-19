@@ -326,7 +326,7 @@ export default function LoanPayoffCard() {
               <h2
                 style={{
                   margin: "8px 0 0",
-                  color: "#22C55E",
+                  color: "var(--color-success)",
                 }}
               >
                 {formatCurrency(
@@ -345,7 +345,7 @@ export default function LoanPayoffCard() {
               <h2
                 style={{
                   margin: "8px 0 0",
-                  color: "#3B82F6",
+                  color: "var(--color-primary)",
                 }}
               >
                 {result.yearsSaved}
@@ -375,7 +375,7 @@ export default function LoanPayoffCard() {
             className="card"
             style={{
               marginTop: 24,
-              borderLeft: "5px solid #3B82F6",
+              borderLeft: "5px solid var(--color-primary)",
             }}
           >
 

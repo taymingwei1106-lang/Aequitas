@@ -1,3 +1,5 @@
+import { getMonthlyCashflow } from "../utils/propertyFinancials";
+
 function firstValue(...values) {
   for (const value of values) {
     if (
@@ -15,6 +17,9 @@ function firstValue(...values) {
 export default class PropertyModel {
   constructor(data = {}) {
     this.id = data.id ?? "";
+
+    // Shared Aequitas cashflow definition (includes recurring expenses).
+    this._monthlyCashflow = getMonthlyCashflow(data).cashflow;
 
     // Property Name
     this.name =
@@ -107,10 +112,7 @@ export default class PropertyModel {
   }
 
   get monthlyCashflow() {
-    return (
-      this.monthlyRent -
-      this.monthlyRepayment
-    );
+    return this._monthlyCashflow;
   }
 
   get appreciation() {

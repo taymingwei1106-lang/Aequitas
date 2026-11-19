@@ -20,6 +20,20 @@
   --color-text-secondary: #b2b8c5;
   --color-text-muted: #7b8497;
 
+  /* ===== Theme tokens used by components ===== */
+  --color-surface-sunken: #11131a;
+  --color-border-strong: #303544;
+  --color-track: #23232d;
+  --color-overlay: rgba(255, 255, 255, 0.03);
+  --color-nav-bg: rgba(20, 20, 27, 0.92);
+  --color-link: #93c5fd;
+  --color-negative: #f97316;
+  --color-success-soft: rgba(34, 197, 94, 0.08);
+  --color-success-border: #14532d;
+  --color-warning-soft: rgba(245, 158, 11, 0.08);
+  --color-warning-border: #7c5e10;
+  --color-danger-border: #7c2d12;
+
   /* ===== Radius ===== */
   --radius-sm: 10px;
   --radius-md: 16px;
@@ -63,4 +77,47 @@
   --transition-fast: 150ms ease;
   --transition: 220ms ease;
   --transition-slow: 320ms ease;
+}
+
+/*
+ * Light theme. Applied when <html data-theme="light"> (see src/theme.js).
+ * Only colours change; layout tokens are shared.
+ */
+:root[data-theme="light"] {
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-soft: rgba(37, 99, 235, 0.1);
+
+  --color-success: #15803d;
+  --color-danger: #dc2626;
+  --color-warning: #b45309;
+  --color-negative: #c2410c;
+
+  --color-bg: #f4f5f9;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f3f4f8;
+  --color-surface-elevated: #eef1f6;
+  --color-surface-sunken: #f7f8fb;
+
+  --color-border: rgba(15, 23, 42, 0.09);
+  --color-border-strong: #d6dbe4;
+
+  --color-text: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #6b7280;
+
+  --color-track: #e3e7ee;
+  --color-overlay: rgba(15, 23, 42, 0.03);
+  --color-nav-bg: rgba(255, 255, 255, 0.94);
+  --color-link: #1d4ed8;
+
+  --color-success-soft: rgba(22, 163, 74, 0.1);
+  --color-success-border: #9fd9b4;
+  --color-warning-soft: rgba(245, 158, 11, 0.12);
+  --color-warning-border: #f0c77a;
+  --color-danger-border: #f3b0a0;
+
+  --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 20px 48px rgba(15, 23, 42, 0.1);
 }

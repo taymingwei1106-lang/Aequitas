@@ -53,6 +53,7 @@ import {
 import {
   calculateForecast,
 } from "./forecastEngine";
+import { getSettings } from "../services/settingsStorage";
 
 import {
   calculateContribution,
@@ -174,6 +175,8 @@ export function calculatePropertyAnalytics(
         equity.equity,
     });
 
+  const forecastSettings = getSettings();
+
   const forecast =
     calculateForecast({
       marketValue:
@@ -184,6 +187,11 @@ export function calculatePropertyAnalytics(
 
       monthlyRental:
         cashflow.rental,
+
+      annualGrowthRate: Number(forecastSettings.valueGrowth) || 0,
+      annualRentalGrowth: Number(forecastSettings.rentGrowth) || 0,
+      interestRate: Number(property?.interestRate) || null,
+      monthlyInstalment: Number(property?.monthlyInstalment) || 0,
 
       years: 5,
     });

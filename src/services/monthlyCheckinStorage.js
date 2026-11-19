@@ -1,5 +1,11 @@
 const CHECKIN_STORAGE_KEY = "aequitas-monthly-checkins";
-const PROPERTY_STORAGE_KEY = "properties";
+
+/*
+ * Must match services/storage.js. This previously pointed at "properties",
+ * a key the rest of the app never reads, so check-ins never updated the
+ * property record.
+ */
+const PROPERTY_STORAGE_KEY = "aequitas-properties";
 
 function readCheckins() {
   try {
@@ -39,6 +45,34 @@ function writeProperties(properties) {
   );
 }
 
+function syncPropertyPosition(propertyId, record) {
+  const properties = readProperties();
+
+  const propertyIndex = properties.findIndex(
+    (property) => String(property.id) === String(propertyId)
+  );
+
+  if (propertyIndex < 0) return;
+
+  const property = { ...properties[propertyIndex] };
+  let changed = false;
+
+  if (record.outstandingLoan !== "") {
+    property.outstandingLoan = record.outstandingLoan;
+    changed = true;
+  }
+
+  if (record.marketValue !== "" && record.marketValue > 0) {
+    property.marketValue = record.marketValue;
+    changed = true;
+  }
+
+  if (!changed) return;
+
+  properties[propertyIndex] = property;
+  writeProperties(properties);
+}
+
 export function getMonthlyCheckins(propertyId) {
   return readCheckins()
     .filter(
@@ -70,6 +104,9 @@ export function saveMonthlyCheckin({
   outstandingLoan,
   marketValue,
   note,
+  rentDue,
+  rentTiming,
+  rentReceivedOn,
 }) {
   if (!propertyId) {
     throw new Error("A property ID is required.");
@@ -133,6 +170,26 @@ export function saveMonthlyCheckin({
 
     note: note?.trim() || "",
 
+    /*
+     * Rent tracking (optional). Left out by a caller = keep what was saved,
+     * so older screens never wipe it.
+     *   rentDue: rent owed for this month ("" = not tracked, 0 = none due)
+     *   rentTiming: "on-time" | "late" | ""
+     *   rentReceivedOn: "YYYY-MM-DD" or ""
+     */
+    rentDue:
+      rentDue === undefined
+        ? existing?.rentDue ?? ""
+        : rentDue === ""
+        ? ""
+        : Number(rentDue) || 0,
+
+    rentTiming:
+      rentTiming === undefined ? existing?.rentTiming ?? "" : rentTiming || "",
+
+    rentReceivedOn:
+      rentReceivedOn === undefined ? existing?.rentReceivedOn ?? "" : rentReceivedOn || "",
+
     createdAt:
       existing?.createdAt ?? now,
 
@@ -148,47 +205,28 @@ export function saveMonthlyCheckin({
   writeCheckins(checkins);
 
   /*
-   * Keep the property's current snapshot
-   * aligned with the latest check-in.
+   * Keep the property's current position aligned with the latest check-in.
+   *
+   * Rules:
+   * - Only point-in-time balances are copied: outstanding loan and market
+   *   value. Monthly flows (rent received, instalment paid) are actual
+   *   results for that month and do not overwrite the property's expected
+   *   rent or instalment, which are changed by editing the property.
+   * - Only when the saved month is the most recent month on record, so
+   *   back-filling an older month never overwrites a newer balance.
+   * - Blank fields are ignored.
    *
    * Historical monthly records remain untouched.
    */
 
-  const properties = readProperties();
+  const latestMonth = checkins
+    .filter((item) => String(item.propertyId) === String(propertyId))
+    .map((item) => String(item.month))
+    .sort()
+    .pop();
 
-  const propertyIndex = properties.findIndex(
-    (property) =>
-      String(property.id) === String(propertyId)
-  );
-
-  if (propertyIndex >= 0) {
-    const property = {
-      ...properties[propertyIndex],
-    };
-
-    if (rentalReceived !== "") {
-      property.monthlyRental =
-        Number(rentalReceived) || 0;
-    }
-
-    if (loanInstalment !== "") {
-      property.monthlyInstalment =
-        Number(loanInstalment) || 0;
-    }
-
-    if (outstandingLoan !== "") {
-      property.outstandingLoan =
-        Number(outstandingLoan) || 0;
-    }
-
-    if (marketValue !== "") {
-      property.marketValue =
-        Number(marketValue) || 0;
-    }
-
-    properties[propertyIndex] = property;
-
-    writeProperties(properties);
+  if (latestMonth === month) {
+    syncPropertyPosition(propertyId, record);
   }
 
   return record;

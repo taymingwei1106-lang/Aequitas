@@ -1,91 +1,66 @@
 import { Link } from "react-router-dom";
-import useIntelligence from "../../hooks/useIntelligence";
 
-export default function ExecutiveBriefCard() {
-  const { score, opportunities } = useIntelligence();
+import StatusPill from "../StatusPill";
+import { STATUS_TONE_BY_KEY, toneColor } from "../../utils/statusTone";
+import { getSettings } from "../../services/settingsStorage";
+import { relativeDays } from "../../utils/freshnessEngine";
 
-  const today = new Date();
+function greeting(now = new Date()) {
+  const hour = now.getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
 
-  const date = today.toLocaleDateString("en-MY", {
+/*
+ * Home — Executive Brief
+ *
+ * Restores the preferred top-of-Home layout (Executive Brief, date,
+ * portfolio status, short message, View Portfolio) but replaces the old
+ * points-based Portfolio Score with a status and its reasons, taken from
+ * the shared assessment engine.
+ *
+ * `portfolio` is the result of assessPortfolio().
+ */
+export default function ExecutiveBriefCard({ portfolio, freshness = [] }) {
+  const date = new Date().toLocaleDateString("en-MY", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
 
-  let focus = {
-    status: "healthy",
-    icon: "✅",
-    title: "Portfolio Healthy",
-    property: "",
-    message:
-      "No immediate investment action is required today.",
-    button: "View Portfolio",
-    link: "/portfolio",
-  };
+  const count = portfolio.assessments.length;
+  const name = getSettings().investorName.trim();
 
-  if (opportunities.refinance.length > 0) {
-    const property = opportunities.refinance[0];
-
-    focus = {
-      status: "action",
-      icon: "🏦",
-      title: "Refinancing Opportunity",
-      property: property.projectName || property.name || "",
-      message:
-        "This property appears suitable for refinancing based on your current portfolio.",
-      button: "Review",
-      link: "/opportunities",
-    };
-  } else if (opportunities.equity.length > 0) {
-    const property = opportunities.equity[0];
-
-    focus = {
-      status: "action",
-      icon: "📈",
-      title: "Equity Release",
-      property: property.projectName || property.name || "",
-      message:
-        "This property has strong available equity for future investment planning.",
-      button: "Review",
-      link: "/opportunities",
-    };
-  } else if (opportunities.rental.length > 0) {
-    const property = opportunities.rental[0];
-
-    focus = {
-      status: "action",
-      icon: "🏠",
-      title: "Rental Optimisation",
-      property: property.projectName || property.name || "",
-      message:
-        "Rental performance deserves review to improve portfolio income.",
-      button: "Review",
-      link: "/opportunities",
-    };
-  } else if (opportunities.sell.length > 0) {
-    const property = opportunities.sell[0];
-
-    focus = {
-      status: "action",
-      icon: "🎯",
-      title: "Sell Opportunity",
-      property: property.projectName || property.name || "",
-      message:
-        "Strong appreciation suggests this property may be approaching an exit opportunity.",
-      button: "Review",
-      link: "/opportunities",
-    };
-  }
+  // "Last checked in" across the portfolio.
+  const lastDays = freshness
+    .map((f) => f.daysSinceEntry)
+    .filter((d) => d !== null)
+    .reduce((min, d) => (min === null || d < min ? d : min), null);
+  const notCurrent = freshness.filter((f) => f.status !== "up-to-date").length;
+  const nextDue = freshness
+    .filter((f) => f.status === "up-to-date")
+    .map((f) => f.nextDue)
+    .sort((a, b) => a - b)[0];
+  const checkinLine =
+    lastDays === null
+      ? "No check-ins recorded yet"
+      : `Last check-in ${relativeDays(lastDays)}` +
+        (notCurrent > 0
+          ? ` · ${notCurrent} ${notCurrent === 1 ? "property needs" : "properties need"} a check-in`
+          : nextDue
+          ? ` · next due ${nextDue.toLocaleDateString("en-MY", { day: "numeric", month: "short" })}`
+          : "");
+  const tone = portfolio.statusMeta.tone;
 
   return (
-    <div className="dashboard-card" style={{ marginBottom: 24 }}>
+    <div className="card" style={{ padding: 28 }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          marginBottom: 28,
           flexWrap: "wrap",
           gap: 20,
         }}
@@ -93,127 +68,122 @@ export default function ExecutiveBriefCard() {
         <div>
           <div
             style={{
-              fontSize: ".85rem",
-              opacity: .65,
+              fontSize: 12,
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
-              letterSpacing: 1,
+              color: "var(--color-text-secondary)",
             }}
           >
             Executive Brief
           </div>
-
-          <h2
-            style={{
-              margin: "8px 0 0",
-            }}
-          >
-            {date}
+          <h2 style={{ margin: "8px 0 0" }}>
+            {greeting()}
+            {name ? `, ${name}` : ""}
           </h2>
+          <div style={{ color: "var(--color-text-secondary)", fontSize: 14, marginTop: 4 }}>
+            {date}
+          </div>
+          {count > 0 && (
+            <div style={{ color: "var(--color-text-secondary)", fontSize: 13, marginTop: 6 }}>
+              {count} {count === 1 ? "property" : "properties"}
+              {portfolio.flaggedCount > 0 &&
+                ` · ${portfolio.flaggedCount} to ${
+                  portfolio.status === "review" ? "review" : "watch"
+                }`}
+            </div>
+          )}
+          {count > 0 && (
+            <div
+              style={{
+                fontSize: 13,
+                marginTop: 4,
+                color: notCurrent > 0 ? "var(--color-warning)" : "var(--color-text-secondary)",
+              }}
+            >
+              📝 {checkinLine}
+            </div>
+          )}
         </div>
 
-        <div
-          style={{
-            textAlign: "right",
-          }}
-        >
+        <div style={{ textAlign: "left", display: "grid", justifyItems: "start" }}>
           <div
             style={{
-              fontSize: ".85rem",
-              opacity: .65,
+              fontSize: 12,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--color-text-secondary)",
+              marginBottom: 8,
             }}
           >
-            Portfolio Score
+            Portfolio status
           </div>
-
-          <div
-            style={{
-              fontSize: "2.7rem",
-              fontWeight: 700,
-              color: "#4f8cff",
-            }}
-          >
-            {score.score}
-          </div>
+          <StatusPill tone={tone} large>
+            {portfolio.statusMeta.label}
+          </StatusPill>
         </div>
       </div>
 
       <div
         style={{
-          borderTop: "1px solid rgba(255,255,255,.08)",
-          paddingTop: 24,
+          borderTop: "1px solid var(--color-border)",
+          marginTop: 22,
+          paddingTop: 20,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          flexWrap: "wrap",
+          gap: 16,
         }}
       >
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "6px 14px",
-            borderRadius: 999,
-            background:
-              focus.status === "healthy"
-                ? "#15391d"
-                : "#3b2a0b",
-            color:
-              focus.status === "healthy"
-                ? "#5de28a"
-                : "#f4c542",
-            fontWeight: 600,
-            fontSize: ".85rem",
-            marginBottom: 22,
-          }}
-        >
-          {focus.status === "healthy"
-            ? "🟢 Portfolio Healthy"
-            : "🟡 Action Recommended"}
+        <div style={{ maxWidth: 640 }}>
+          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.55 }}>
+            {portfolio.message}
+          </p>
+
+          {portfolio.assessments
+            .filter((a) => a.concerns.length > 0)
+            .map((a) => (
+              <ul
+                key={a.id}
+                style={{
+                  margin: "10px 0 0",
+                  paddingLeft: 0,
+                  listStyle: "none",
+                  display: "grid",
+                  gap: 4,
+                }}
+              >
+                {a.concerns.map((c) => (
+                  <li key={c.key} style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
+                    <span
+                      style={{
+                        color: toneColor(STATUS_TONE_BY_KEY[c.status]),
+                        fontWeight: 700,
+                        marginRight: 6,
+                      }}
+                    >
+                      {c.title}
+                    </span>
+                    {c.text}
+                  </li>
+                ))}
+              </ul>
+            ))}
         </div>
 
-        <h3
-          style={{
-            margin: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <span>{focus.icon}</span>
-
-          {focus.title}
-        </h3>
-
-        {focus.property && (
-          <div
-            style={{
-              marginTop: 14,
-              fontWeight: 700,
-              color: "#4f8cff",
-              fontSize: "1.05rem",
-            }}
-          >
-            {focus.property}
-          </div>
+        {count > 0 ? (
+          <Link to="/portfolio">
+            <button className="primary-button" style={{ width: "auto" }}>
+              View Portfolio
+            </button>
+          </Link>
+        ) : (
+          <Link to="/add">
+            <button className="primary-button" style={{ width: "auto" }}>
+              + Add Property
+            </button>
+          </Link>
         )}
-
-        <p
-          style={{
-            marginTop: 14,
-            lineHeight: 1.7,
-            opacity: .8,
-          }}
-        >
-          {focus.message}
-        </p>
-
-        <Link to={focus.link}>
-          <button
-            className="primary-button"
-            style={{
-              marginTop: 18,
-            }}
-          >
-            {focus.button}
-          </button>
-        </Link>
       </div>
     </div>
   );
